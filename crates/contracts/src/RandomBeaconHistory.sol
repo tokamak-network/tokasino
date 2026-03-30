@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.20;
 
 /// @title IRandomBeaconHistory
 /// @notice Read-only interface for consumers that need historical randomness.
@@ -23,7 +23,7 @@ contract RandomBeaconHistory is IRandomBeaconHistory {
 
     /// @notice The privileged system address used by the execution layer to invoke
     ///         system-level contract calls.
-    address public constant SYSTEM_ADDRESS = 0xfFffffffFfFFFffffffFfFfFFffFFfFfffFfFFFe;
+    address public constant SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
     // -------------------------------------------------------------------------
     // State

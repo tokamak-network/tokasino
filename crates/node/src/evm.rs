@@ -1,8 +1,8 @@
 //! Custom EVM factory for Tokasino that adds a randomness precompile at address 0x0b.
 //!
-//! The randomness precompile returns a 32-byte pseudo-random value derived from an
-//! incrementing counter. This is a placeholder mechanism that will be replaced with
-//! per-tx ChaCha20 CSPRNG seeded by VRF output.
+//! The randomness precompile returns a 32-byte pseudo-random value using ChaCha20 CSPRNG.
+//! The caller passes a 32-byte seed (typically prevrandao from Solidity) as input.
+//! The precompile mixes the seed with an atomic counter to produce unique output per call.
 
 use alloy_evm::{
     eth::EthEvmContext,
@@ -13,26 +13,21 @@ use alloy_evm::{
     },
     EvmFactory,
 };
-use alloy_primitives::{address, Address, Bytes};
-use reth_ethereum::{
-    chainspec::ChainSpec,
-    evm::{
-        primitives::{Database, EvmEnv},
-        revm::{
-            context::{BlockEnv, Context, TxEnv},
-            context_interface::result::{EVMError, HaltReason},
-            inspector::{Inspector, NoOpInspector},
-            interpreter::interpreter::EthInterpreter,
-            primitives::hardfork::SpecId,
-            MainBuilder, MainContext,
-        },
-        EthEvm, EthEvmConfig,
+use alloy_primitives::{address, keccak256, Address, Bytes};
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
+use rand::RngCore;
+use reth_ethereum::evm::{
+    primitives::{Database, EvmEnv},
+    revm::{
+        context::{BlockEnv, Context, TxEnv},
+        context_interface::result::{EVMError, HaltReason},
+        inspector::{Inspector, NoOpInspector},
+        interpreter::interpreter::EthInterpreter,
+        primitives::hardfork::SpecId,
+        MainBuilder, MainContext,
     },
-    node::{
-        api::{FullNodeTypes, NodeTypes},
-        builder::{components::ExecutorBuilder, BuilderContext},
-    },
-    EthPrimitives,
+    EthEvm,
 };
 use revm::precompile::Precompile;
 use std::sync::{
@@ -44,23 +39,42 @@ use std::sync::{
 pub const RANDOMNESS_PRECOMPILE_ADDRESS: Address =
     address!("0x000000000000000000000000000000000000000b");
 
-/// Global counter used to mix with prevrandao for unique per-call randomness.
-/// This is a simple placeholder; production will use per-tx ChaCha20 CSPRNG.
+/// Atomic counter mixed into the ChaCha20 seed for unique per-call output.
 static RANDOMNESS_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-/// Precompile function for randomness. Returns a 32-byte pseudo-random value.
-fn randomness_precompile(_input: &[u8], _gas_limit: u64) -> PrecompileResult {
-    // Increment the counter for each call to produce unique values.
+/// Gas cost for the randomness precompile (flat cost).
+const RANDOMNESS_GAS: u64 = 100;
+
+/// Randomness precompile using ChaCha20 CSPRNG.
+///
+/// **Input:** 32 bytes — the seed (typically `block.prevrandao` passed from Solidity).
+///            If input is empty or shorter than 32 bytes, it is zero-padded.
+///
+/// **Output:** 32 bytes — pseudo-random value derived from `ChaCha20(keccak256(seed || counter))`.
+///
+/// Each call increments an internal counter so that multiple calls within the same
+/// transaction return different values. The Solidity wrapper passes `block.prevrandao`
+/// as the seed, which is the VRF output from the CL.
+fn randomness_precompile(input: &[u8], gas_limit: u64) -> PrecompileResult {
+    if gas_limit < RANDOMNESS_GAS {
+        return Err(alloy_evm::revm::precompile::PrecompileError::OutOfGas.into());
+    }
+
+    // Parse seed from input (zero-pad if short).
+    let mut seed = [0u8; 32];
+    let len = input.len().min(32);
+    seed[..len].copy_from_slice(&input[..len]);
+
+    // Mix in the counter for uniqueness across calls.
     let counter = RANDOMNESS_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let mixed = keccak256([seed.as_slice(), &counter.to_le_bytes()].concat());
 
-    // Build a 32-byte pseudo-random output by placing the counter into
-    // the first 8 bytes of a zeroed buffer. In the real implementation
-    // this will be replaced with prevrandao-seeded ChaCha20 output.
+    // Derive 32 bytes of randomness via ChaCha20.
+    let mut rng = ChaCha20Rng::from_seed(*mixed);
     let mut output = [0u8; 32];
-    output[..8].copy_from_slice(&counter.to_le_bytes());
+    rng.fill_bytes(&mut output);
 
-    // Gas cost: flat 100 gas (cheap, placeholder value)
-    Ok(PrecompileOutput::new(100, Bytes::from(output.to_vec())))
+    Ok(PrecompileOutput::new(RANDOMNESS_GAS, Bytes::from(output.to_vec())))
 }
 
 /// Custom EVM factory that extends the standard Ethereum EVM with a randomness precompile.
@@ -132,20 +146,3 @@ pub fn tokasino_precompiles() -> &'static Precompiles {
     })
 }
 
-/// Executor builder that wires up the Tokasino EVM factory into reth's execution pipeline.
-#[derive(Debug, Default, Clone, Copy)]
-#[non_exhaustive]
-pub struct TokasinoExecutorBuilder;
-
-impl<Node> ExecutorBuilder<Node> for TokasinoExecutorBuilder
-where
-    Node: FullNodeTypes<Types: NodeTypes<ChainSpec = ChainSpec, Primitives = EthPrimitives>>,
-{
-    type EVM = EthEvmConfig<ChainSpec, TokasinoEvmFactory>;
-
-    async fn build_evm(self, ctx: &BuilderContext<Node>) -> eyre::Result<Self::EVM> {
-        let evm_config =
-            EthEvmConfig::new_with_evm_factory(ctx.chain_spec(), TokasinoEvmFactory::default());
-        Ok(evm_config)
-    }
-}

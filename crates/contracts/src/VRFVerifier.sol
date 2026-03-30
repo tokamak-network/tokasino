@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.20;
 
 /// @title IVRFVerifier
 /// @notice Interface for verifying VRF (Verifiable Random Function) proofs on-chain.

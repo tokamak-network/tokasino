@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.20;
 
 /// @title IRandomness
 /// @notice Interface for the on-chain randomness precompile deployed at address 0x0b.

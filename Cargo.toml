@@ -34,7 +34,7 @@ revm = "34.0"
 
 # crypto
 blst = "0.3"
-rand_chacha = "0.9"
+rand_chacha = "0.3"
 rand = "0.8"
 
 # async

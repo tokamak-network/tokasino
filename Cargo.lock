@@ -10025,6 +10025,8 @@ dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
  "eyre",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
  "reth-ethereum",
  "reth-tracing",
  "revm",
