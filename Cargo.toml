@@ -5,43 +5,37 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.93"
+rust-version = "1.88"
 
 [workspace.dependencies]
-# reth (git dependency, pinned to stable release)
-reth = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-chainspec = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-ethereum = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3", features = ["node", "evm", "cli"] }
-reth-evm = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.11.3" }
+# op-reth (local path — clone op-rs/op-reth next to this repo)
+reth-optimism-node = { path = "../tokasino-op-reth/crates/optimism/node" }
+reth-optimism-evm = { path = "../tokasino-op-reth/crates/optimism/evm" }
+reth-optimism-chainspec = { path = "../tokasino-op-reth/crates/optimism/chainspec" }
+reth-optimism-primitives = { path = "../tokasino-op-reth/crates/optimism/primitives" }
+reth-optimism-cli = { path = "../tokasino-op-reth/crates/optimism/cli" }
+reth-optimism-forks = { path = "../tokasino-op-reth/crates/optimism/hardforks" }
 
-# alloy
-alloy-evm = "0.27"
+# reth core (same tag as op-reth uses)
+reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.10.2" }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.10.2" }
+reth-evm = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.10.2" }
+reth-cli-util = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.10.2" }
+reth-tracing = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.10.2" }
+
+# revm (match op-reth)
+revm = "33.1"
+
+# randomness
 alloy-primitives = "1.5"
-alloy-genesis = "1.8"
-alloy-sol-types = "1.5"
-alloy-eips = "1.8"
-alloy-rpc-types-engine = "1.8"
+rand_chacha = "0.9"
+rand = "0.9"
 
-# revm
-revm = "34.0"
-
-# crypto
+# consensus CL dependencies
 blst = "0.3"
-rand_chacha = "0.3"
-rand = "0.8"
-
-# async
 tokio = { version = "1.44", features = ["full"] }
 reqwest = { version = "0.12", features = ["json"] }
-
-# misc
+alloy-rpc-types-engine = "1.2"
 eyre = "0.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
