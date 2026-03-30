@@ -1,4 +1,7 @@
+mod beacon;
+mod dkg;
 mod engine;
+mod threshold;
 mod vrf;
 
 use alloy_primitives::B256;
@@ -91,13 +94,17 @@ async fn produce_block(
 
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
-    // Build payload attributes (V3).
+    // Build payload attributes (V3 with OP Stack extensions).
     let payload_attributes = json!({
         "timestamp": format!("0x{timestamp:x}"),
         "prevRandao": prev_randao,
         "suggestedFeeRecipient": "0x0000000000000000000000000000000000000000",
         "withdrawals": [],
         "parentBeaconBlockRoot": B256::ZERO,
+        // OP Stack specific fields
+        "transactions": [],
+        "noTxPool": false,
+        "gasLimit": format!("0x{:x}", 30_000_000u64),
     });
 
     // Step 1: forkchoiceUpdated — tell the EL about the current head and request a new payload.
