@@ -107,6 +107,65 @@ interface IRandomBeaconHistory {
 // Phase 2: resolveBet() — fetch finalized randomness, determine outcome
 ```
 
+## DRB (Distributed Random Beacon) Integration
+
+Tokasino integrates an on-chain **Commit-Reveal** protocol to eliminate sequencer trust dependency in randomness generation.
+
+### Problem
+
+In Phase 1, the sequencer holds the VRF key and can predict or bias randomness. A single point of trust remains.
+
+### Solution
+
+Deploy a DRB Commit-Reveal contract on the Tokasino L2 itself. Multiple independent operators participate in each round:
+
+```
+[Operator A] ──commit(hash)──→ ┌─────────────────────┐
+[Operator B] ──commit(hash)──→ │  DRB Commit-Reveal   │
+[Operator C] ──commit(hash)──→ │  Contract (L2)       │
+                               └──────────┬──────────┘
+                                          │ reveal phase
+[Operator A] ──reveal(secret)─→           │
+[Operator B] ──reveal(secret)─→           │
+[Operator C] ──reveal(secret)─→           │
+                                          ▼
+                               finalized randomness = hash(XOR of all secrets)
+                                          │
+                    Sequencer (CL) ←──────┘
+                          │
+             VRF input = parent_hash + block_number + drb_seed
+                          │
+                    prev_randao → RandomBeaconHistory
+```
+
+### Security Guarantee
+
+- **N-of-N reveal**: All committers must reveal; otherwise the round expires
+- **1-of-N unpredictability**: As long as one operator keeps their secret private until reveal, the final randomness is unpredictable
+- **Front-run resistant**: Commitment = `keccak256(secret || msg.sender)`, binding the secret to the operator
+
+### Contract: `DRBCommitReveal.sol`
+
+```solidity
+// Consume DRB randomness in your dApp
+IDRBCommitReveal drb = IDRBCommitReveal(DRB_ADDRESS);
+bytes32 rand = drb.getRoundRandomness(drb.latestFinalizedRound());
+```
+
+Key parameters:
+- `commitPhaseDuration` — blocks for commit phase
+- `revealPhaseDuration` — blocks for reveal phase
+- `MIN_OPERATORS` — minimum 2 operators per round
+
+### Integration Roadmap
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | DRB Commit-Reveal smart contract | Done |
+| 2 | CL modification: mix DRB seed into VRF input | Planned |
+| 3 | RandomBeaconHistory: store DRB seed alongside VRF | Planned |
+| 4 | DRB operator node client | Planned |
+
 ## Repository Structure
 
 ### This repo (tokasino)
@@ -114,7 +173,7 @@ interface IRandomBeaconHistory {
 Prototyping and contracts. Contains:
 - `crates/node/` — reth-based prototype node (dev mode testing)
 - `crates/consensus/` — VRF consensus layer prototype (BLS12-381)
-- `crates/contracts/` — Solidity contracts (RandomBeaconHistory, CasinoExample, etc.)
+- `crates/contracts/` — Solidity contracts (RandomBeaconHistory, DRBCommitReveal, CasinoExample, etc.)
 - `scripts/` — Integration test scripts
 
 ### op-reth fork (tokasino-op-reth)
@@ -137,13 +196,16 @@ Production execution client. Fork of [op-rs/op-reth](https://github.com/op-rs/op
 
 ### Phase 1 — OP Stack Integration (Current)
 
+- [x] DRB Commit-Reveal contract for distributed randomness
 - [ ] Fork op-reth, add randomness to OpEvmConfig
 - [ ] VRF override in OpPayloadBuilder
+- [ ] DRB seed integration into CL VRF input
 - [ ] Deploy with standard OP Stack (op-node + op-batcher + op-proposer)
 - [ ] L1 settlement on Ethereum testnet
 
 ### Phase 2 — Production
 
+- [ ] DRB operator node client
 - [ ] Threshold BLS beacon (distributed validators)
 - [ ] Mainnet deployment
 - [ ] Superchain compatibility
@@ -170,13 +232,13 @@ Production execution client. Fork of [op-rs/op-reth](https://github.com/op-rs/op
 
 ## Security Model
 
-| Property | Phase 1 (VRF) | Phase 2 (Threshold BLS) |
-|----------|---------------|-------------------------|
-| Verifiable | Yes — VRF proof on-chain | Yes — group public key |
-| Unbiasable | No — sequencer can withhold | Yes — threshold guarantee |
-| Unpredictable | No — sequencer knows first | Yes — no one knows |
-| Revert-resistant | Yes — via commit-reveal | Yes — via commit-reveal |
-| Forgery-proof | Yes — VRF is deterministic | Yes — threshold signature |
+| Property | Phase 1 (VRF only) | Phase 1 (VRF + DRB) | Phase 2 (Threshold BLS) |
+|----------|-------------------|---------------------|-------------------------|
+| Verifiable | Yes — VRF proof | Yes — VRF + Merkle | Yes — group public key |
+| Unbiasable | No — sequencer bias | Yes — 1-of-N honest | Yes — threshold guarantee |
+| Unpredictable | No — sequencer knows | Yes — commit-reveal | Yes — no one knows |
+| Revert-resistant | Yes — system call | Yes — system call | Yes — system call |
+| Forgery-proof | Yes — VRF deterministic | Yes — VRF + DRB hash | Yes — threshold signature |
 
 ## Prior Art
 
