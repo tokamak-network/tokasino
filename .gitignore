@@ -3,3 +3,5 @@
 *.swo
 .DS_Store
 vrf_key.bin
+crates/contracts/out/
+crates/contracts/cache/
