@@ -1,74 +1,76 @@
 # Tokasino
 
-Randomness-native EVM L2 for on-chain casino and gambling dApps.
+Randomness-native OP Stack L2 for on-chain casino and gambling dApps.
 
 ## Vision
 
 Existing EVM chains lack secure built-in randomness. Ethereum's `PREVRANDAO` is biasable by validators, and oracle solutions (Chainlink VRF) add cost and latency per request. This makes building trustless on-chain casinos impractical.
 
-Tokasino is an L2 that provides **protocol-level, verifiable randomness** — free for dApp developers, with no external oracle dependency.
+Tokasino is an OP Stack L2 that provides **protocol-level, verifiable randomness** — free for dApp developers, with no external oracle dependency.
 
 ## Architecture
 
-Tokasino uses [reth](https://github.com/paradigmxyz/reth) as a git dependency and extends it with randomness features via reth's modular `NodeBuilder` API. A custom Consensus Layer process generates VRF-backed randomness and delivers it to the EL via the standard Engine API.
+Tokasino is a fork of [op-reth](https://github.com/op-rs/op-reth) (the official Rust OP Stack execution client) with randomness features added to the EVM layer. It runs as a standard OP Stack chain with Go op-node, op-batcher, and op-proposer.
 
 ```
-┌──────────────────────────────────┐
-│  Custom Consensus Layer          │
-│  (Separate process)              │
-│                                  │
-│  Phase 1: VRF Beacon             │
-│  Phase 2: Threshold BLS Beacon   │
-│                                  │
-│  Generates per-block randomness  │
-└───────────────┬──────────────────┘
-                │ HTTP (Engine API)
-                │ prev_randao = VRF output
-                ▼
-┌──────────────────────────────────────────────┐
-│  reth + Tokasino extensions (EL)             │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │ PREVRANDAO opcode (block.prevrandao)   │  │
-│  │ Existing EVM — beacon output per block │  │
-│  └────────────────────────────────────────┘  │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │ Randomness Precompile (0x0b)           │  │
-│  │ Per-tx ChaCha20 CSPRNG                 │  │
-│  │ Immediate, revertible                  │  │
-│  └────────────────────────────────────────┘  │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │ RandomBeaconHistory (System Contract)  │  │
-│  │ Stores per-block SoR on-chain          │  │
-│  │ Commit-reveal for gambling             │  │
-│  └────────────────────────────────────────┘  │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────┐
+│  OP Stack Infrastructure (Go)          │
+│                                        │
+│  op-node    ← L1 derivation + CL      │
+│  op-batcher ← batch submission to L1   │
+│  op-proposer← output root proposals   │
+└─────────────────┬──────────────────────┘
+                  │ Engine API
+                  │ prev_randao (VRF-overridden in EL)
+                  ▼
+┌────────────────────────────────────────────────┐
+│  op-reth fork (Tokasino EL)                    │
+│                                                │
+│  ┌──────────────────────────────────────────┐  │
+│  │ PREVRANDAO opcode (block.prevrandao)     │  │
+│  │ VRF-derived randomness per block         │  │
+│  └──────────────────────────────────────────┘  │
+│                                                │
+│  ┌──────────────────────────────────────────┐  │
+│  │ Randomness Precompile (0x0b)             │  │
+│  │ Per-tx ChaCha20 CSPRNG                   │  │
+│  │ Immediate, revertible                    │  │
+│  └──────────────────────────────────────────┘  │
+│                                                │
+│  ┌──────────────────────────────────────────┐  │
+│  │ RandomBeaconHistory (System Contract)    │  │
+│  │ Stores per-block SoR on-chain            │  │
+│  │ Commit-reveal for gambling               │  │
+│  └──────────────────────────────────────────┘  │
+│                                                │
+│  All other OP Stack features intact:           │
+│  L1→L2 deposits, L2 fee model, bridge, etc.   │
+└────────────────────────────────────────────────┘
 ```
 
-## How It Works
+### Why OP Stack?
 
-### Randomness Generation
+| Feature | Pure reth | op-reth (OP Stack) |
+|---------|-----------|-------------------|
+| L1 ↔ L2 bridge | None | Built-in |
+| L1 settlement | None | Built-in |
+| L2 fee model | L1 pricing | L1 fee + L2 fee split |
+| Sequencer | Custom CL needed | op-node (production) |
+| Fault proofs | None | Cannon / kona-client |
+| Ecosystem | None | Superchain compatible |
 
-1. The CL generates a VRF proof: `VRF(secret_key, block_number) → (output, proof)`
-2. `output` is sent to reth as `prev_randao` via Engine API
-3. Anyone can verify the proof on-chain — the value cannot be forged
+## Randomness Features
 
-### Why VRF, Not Just Random Bytes?
+### How It Works
 
-| | Native RNG | VRF | Threshold BLS |
-|---|---|---|---|
-| Verifiable | No | **Yes** | Yes |
-| Forgery-proof | No | **Yes** | Yes |
-| Unpredictable | Operator knows | Operator knows | No one knows |
-| Implementation | Trivial | **Phase 1** | Phase 2 |
+1. The OP Stack sequencer provides `prev_randao` via Engine API
+2. The EL overrides this with a VRF-derived value in the payload builder
+3. Each block gets a verifiable, deterministic random seed
+4. Smart contracts access randomness via precompile or system contract
 
-Native RNG (raw random bytes) cannot prove fairness — the operator could insert any value. VRF guarantees that the output is deterministically derived from the input and cannot be manipulated, with a cryptographic proof anyone can verify. This is the minimum requirement for **Provably Fair** gambling.
+### Solidity Interfaces
 
-## Randomness Interfaces for Solidity Developers
-
-### 1. `block.prevrandao` (Existing EVM Opcode)
+#### 1. `block.prevrandao` (Existing EVM Opcode)
 
 Direct beacon output per block. Zero gas overhead.
 
@@ -76,9 +78,9 @@ Direct beacon output per block. Zero gas overhead.
 uint256 rand = block.prevrandao;
 ```
 
-### 2. Randomness Precompile (Immediate, Revertible)
+#### 2. Randomness Precompile (Immediate, Revertible)
 
-Per-transaction CSPRNG backed by ChaCha20, seeded from the beacon. Each transaction within the same block gets an independent random stream.
+Per-transaction CSPRNG backed by ChaCha20, seeded from the beacon.
 
 ```solidity
 interface IRandomness {
@@ -90,148 +92,101 @@ uint256 rand = RANDOM.getRandomUint256();
 ```
 
 Suitable for: GameFi loot drops, NFT minting, random matchmaking.
-
 Not suitable for gambling — users can revert unfavorable outcomes.
 
-### 3. RandomBeaconHistory (Commit-Reveal, Non-Revertible)
+#### 3. RandomBeaconHistory (Commit-Reveal, Non-Revertible)
 
-System contract storing per-block beacon outputs. Enables the commit-reveal pattern required for trustless gambling.
+System contract for trustless gambling via commit-reveal pattern.
 
 ```solidity
 interface IRandomBeaconHistory {
-    function sourceOfRandomness(uint256 blockHeight) external view returns (bytes32);
+    function getRandomness(uint256 blockHeight) external view returns (bytes32);
 }
 
-contract Casino {
-    IRandomBeaconHistory constant BEACON = IRandomBeaconHistory(0x...);
-
-    struct Bet {
-        address player;
-        uint256 amount;
-        uint256 commitBlock;
-        uint8 choice;
-    }
-
-    // Phase 1: User places bet (randomness for this block is unknown)
-    function placeBet(uint8 choice) external payable {
-        bets[nextId] = Bet(msg.sender, msg.value, block.number, choice);
-    }
-
-    // Phase 2: Resolve after commit block (randomness is now finalized)
-    function resolveBet(uint256 betId) external {
-        Bet memory bet = bets[betId];
-        require(block.number > bet.commitBlock, "too early");
-
-        bytes32 sor = BEACON.sourceOfRandomness(bet.commitBlock);
-        uint256 rand = uint256(keccak256(abi.encodePacked(sor, betId)));
-        uint8 result = uint8(rand % 6) + 1;
-
-        if (result == bet.choice) {
-            payable(bet.player).transfer(bet.amount * 5);
-        }
-    }
-}
+// Phase 1: placeBet() — randomness for this block is unknown
+// Phase 2: resolveBet() — fetch finalized randomness, determine outcome
 ```
+
+## Repository Structure
+
+### This repo (tokasino)
+
+Prototyping and contracts. Contains:
+- `crates/node/` — reth-based prototype node (dev mode testing)
+- `crates/consensus/` — VRF consensus layer prototype (BLS12-381)
+- `crates/contracts/` — Solidity contracts (RandomBeaconHistory, CasinoExample, etc.)
+- `scripts/` — Integration test scripts
+
+### op-reth fork (tokasino-op-reth)
+
+Production execution client. Fork of [op-rs/op-reth](https://github.com/op-rs/op-reth) with:
+- Custom `OpEvmFactory` wrapper adding randomness precompile at 0x0b
+- Custom `BlockExecutor` injecting RandomBeaconHistory system call per block
+- VRF-based `prev_randao` override in payload builder
+- RandomBeaconHistory contract in genesis
 
 ## Development Phases
 
-### Phase 0 — Chain Runs (2-3 weeks)
+### Phase 0 — Prototype (Done)
 
-- reth-based custom node boots in dev mode
-- Custom `ChainSpec` with Tokasino chain ID and genesis
-- Basic Solidity contract deployment and execution verified
+- [x] Randomness precompile (ChaCha20 CSPRNG)
+- [x] RandomBeaconHistory system contract
+- [x] VRF consensus layer (BLS12-381)
+- [x] CL-EL integration via Engine API
+- [x] E2E CasinoExample commit-reveal test passing
 
-### Phase 1 — VRF Randomness (4-6 weeks)
+### Phase 1 — OP Stack Integration (Current)
 
-- Custom CL process generating VRF proofs per block
-- Randomness precompile at `0x0b` (per-tx ChaCha20 CSPRNG)
-- RandomBeaconHistory system contract (commit-reveal for gambling)
-- VRF verifier contract for on-chain proof verification
-- **Casino dApps can launch with Provably Fair guarantees**
+- [ ] Fork op-reth, add randomness to OpEvmConfig
+- [ ] VRF override in OpPayloadBuilder
+- [ ] Deploy with standard OP Stack (op-node + op-batcher + op-proposer)
+- [ ] L1 settlement on Ethereum testnet
 
-### Phase 2 — Threshold BLS (Future)
+### Phase 2 — Production
 
-- Distributed validators run DKG per epoch
-- t+1 out of n signature shares required per block
-- No single party can predict or bias randomness
-- EL interface unchanged — dApp code does not change
-
-## Project Structure
-
-```
-tokasino/
-├── crates/
-│   ├── node/                  # Custom reth node binary
-│   │   ├── src/
-│   │   │   ├── main.rs        # NodeBuilder entry point
-│   │   │   ├── evm.rs         # MyEvmFactory + randomness precompile
-│   │   │   ├── executor.rs    # BlockExecutor wrapper (system contract call)
-│   │   │   └── payload.rs     # Custom payload builder
-│   │   └── Cargo.toml
-│   │
-│   ├── consensus/             # Custom CL process (VRF beacon)
-│   │   ├── src/
-│   │   │   ├── main.rs        # Standalone binary
-│   │   │   ├── vrf.rs         # VRF key management + proof generation
-│   │   │   └── engine.rs      # Engine API client (HTTP)
-│   │   └── Cargo.toml
-│   │
-│   └── contracts/             # Solidity contracts
-│       ├── src/
-│       │   ├── RandomBeaconHistory.sol
-│       │   ├── IRandomness.sol
-│       │   └── VRFVerifier.sol
-│       └── foundry.toml
-│
-├── Cargo.toml                 # Workspace root
-└── README.md
-```
+- [ ] Threshold BLS beacon (distributed validators)
+- [ ] Mainnet deployment
+- [ ] Superchain compatibility
 
 ## Tech Stack
 
-### Execution Layer (reth extension)
+### Execution Layer
 
-- Base: [reth](https://github.com/paradigmxyz/reth) v1.11.3 (git dependency)
-- EVM: [revm](https://github.com/bluealloy/revm) (reth's built-in)
-- Pattern: `NodeBuilder` API — custom `EvmFactory`, `BlockExecutor`, `PayloadBuilder`
-- Per-tx CSPRNG: [`rand_chacha`](https://crates.io/crates/rand_chacha) (ChaCha20)
+- Base: [op-reth](https://github.com/op-rs/op-reth) (official Rust OP Stack EL)
+- EVM: revm + op-revm
+- Randomness: ChaCha20 CSPRNG + BLS12-381 VRF
 
-### Consensus Layer (Custom)
+### Consensus / Infrastructure (Go)
 
-- VRF: [`blst`](https://github.com/supranational/blst) (BLS12-381, NCC audited)
-- Future Threshold BLS: [`blsful`](https://lib.rs/crates/blsful) + [`gennaro-dkg`](https://crates.io/crates/gennaro-dkg)
-- Engine API client: [`reqwest`](https://crates.io/crates/reqwest) + [`alloy-rpc-types-engine`](https://docs.rs/alloy-rpc-types-engine)
+- [op-node](https://github.com/ethereum-optimism/optimism/tree/develop/op-node) — rollup node
+- [op-batcher](https://github.com/ethereum-optimism/optimism/tree/develop/op-batcher) — batch submitter
+- [op-proposer](https://github.com/ethereum-optimism/optimism/tree/develop/op-proposer) — output proposer
 
-### Prior Art
+### Cryptographic Libraries
 
-| Project | Mechanism | EVM | Key Lesson |
-|---------|-----------|-----|------------|
-| [SKALE](https://skale.space/) | Threshold BLS precompile | Yes | Only production EVM chain with native threshold randomness |
-| [Oasis Sapphire](https://oasisprotocol.org/) | VRF + TEE precompile | Yes | EVM precompile interface design |
-| [Flow](https://flow.com/) | Threshold BLS beacon | Partial | Commit-reveal system contract pattern |
-| [Sui](https://sui.io/) | Threshold DKG/BLS | No | Consensus-parallel randomness generation |
-| [Aptos](https://aptos.dev/) | Weighted VRF/wVUF | No | Instant on-chain randomness API |
-| [drand](https://drand.love/) | Threshold BLS (standalone) | Via evmnet | External beacon integration option |
+- [`blst`](https://github.com/supranational/blst) — BLS12-381 VRF (NCC audited)
+- [`rand_chacha`](https://crates.io/crates/rand_chacha) — Per-tx CSPRNG
+- Future: [`blsful`](https://lib.rs/crates/blsful) + [`gennaro-dkg`](https://crates.io/crates/gennaro-dkg) for Threshold BLS
 
 ## Security Model
 
 | Property | Phase 1 (VRF) | Phase 2 (Threshold BLS) |
 |----------|---------------|-------------------------|
 | Verifiable | Yes — VRF proof on-chain | Yes — group public key |
-| Unbiasable | No — sequencer can withhold block | Yes — threshold guarantee |
+| Unbiasable | No — sequencer can withhold | Yes — threshold guarantee |
 | Unpredictable | No — sequencer knows first | Yes — no one knows |
 | Revert-resistant | Yes — via commit-reveal | Yes — via commit-reveal |
 | Forgery-proof | Yes — VRF is deterministic | Yes — threshold signature |
 
-## Why Not Just Use Chainlink VRF?
+## Prior Art
 
-| | Chainlink VRF | Tokasino Native |
-|---|---|---|
-| Cost | ~0.25 LINK per request + gas | Free |
-| Latency | 2-3 blocks (~24-36s on L1) | Same block or next block |
-| Dependency | External oracle network | Built into protocol |
-| Availability | Oracle must be running | Always available |
-| Developer UX | Async callback pattern | Simple read or commit-reveal |
+| Project | Mechanism | EVM | Lesson |
+|---------|-----------|-----|--------|
+| [SKALE](https://skale.space/) | Threshold BLS precompile | Yes | Only production EVM chain with native threshold randomness |
+| [Oasis Sapphire](https://oasisprotocol.org/) | VRF + TEE precompile | Yes | EVM precompile interface design |
+| [Flow](https://flow.com/) | Threshold BLS beacon | Partial | Commit-reveal system contract pattern |
+| [Sui](https://sui.io/) | Threshold DKG/BLS | No | Consensus-parallel randomness |
+| [Aptos](https://aptos.dev/) | Weighted VRF/wVUF | No | Instant randomness API |
 
 ## License
 
