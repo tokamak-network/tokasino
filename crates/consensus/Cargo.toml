@@ -23,3 +23,4 @@ alloy-rpc-types-engine = { workspace = true }
 tracing-subscriber = { workspace = true }
 jsonwebtoken = { workspace = true }
 hex = { workspace = true }
+axum = { workspace = true }
