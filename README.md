@@ -6,11 +6,11 @@ Randomness-native EVM L2 for on-chain casino and gambling dApps.
 
 Existing EVM chains lack secure built-in randomness. Ethereum's `PREVRANDAO` is biasable by validators, and oracle solutions (Chainlink VRF) add cost and latency per request. This makes building trustless on-chain casinos impractical.
 
-Tokasino is an L2 that provides **protocol-level, unbiasable randomness** — free for dApp developers, with no external oracle dependency.
+Tokasino is an L2 that provides **protocol-level, verifiable randomness** — free for dApp developers, with no external oracle dependency.
 
 ## Architecture
 
-Tokasino is built by forking [ethrex](https://github.com/lambdaclass/ethrex) (Rust-based Ethereum execution client by Lambdaclass) and adding a custom Consensus Layer with a built-in random beacon.
+Tokasino uses [reth](https://github.com/paradigmxyz/reth) as a git dependency and extends it with randomness features via reth's modular `NodeBuilder` API. A custom Consensus Layer process generates VRF-backed randomness and delivers it to the EL via the standard Engine API.
 
 ```
 ┌──────────────────────────────────┐
@@ -23,37 +23,50 @@ Tokasino is built by forking [ethrex](https://github.com/lambdaclass/ethrex) (Ru
 │  Generates per-block randomness  │
 └───────────────┬──────────────────┘
                 │ HTTP (Engine API)
-                │ prev_randao = beacon output
+                │ prev_randao = VRF output
                 ▼
-┌──────────────────────────────────┐
-│  ethrex fork (Execution Layer)   │
-│                                  │
-│  ┌────────────────────────────┐  │
-│  │ PREVRANDAO opcode          │  │
-│  │ block.prevrandao in        │  │
-│  │ Solidity (existing)        │  │
-│  └────────────────────────────┘  │
-│                                  │
-│  ┌────────────────────────────┐  │
-│  │ Randomness Precompile      │  │
-│  │ (0x0b)                     │  │
-│  │ Per-tx CSPRNG via ChaCha20 │  │
-│  │ Immediate, revertible      │  │
-│  └────────────────────────────┘  │
-│                                  │
-│  ┌────────────────────────────┐  │
-│  │ RandomBeaconHistory        │  │
-│  │ (System Contract)          │  │
-│  │ Commit-reveal pattern      │  │
-│  │ Non-revertible, for        │  │
-│  │ gambling                   │  │
-│  └────────────────────────────┘  │
-└──────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  reth + Tokasino extensions (EL)             │
+│                                              │
+│  ┌────────────────────────────────────────┐  │
+│  │ PREVRANDAO opcode (block.prevrandao)   │  │
+│  │ Existing EVM — beacon output per block │  │
+│  └────────────────────────────────────────┘  │
+│                                              │
+│  ┌────────────────────────────────────────┐  │
+│  │ Randomness Precompile (0x0b)           │  │
+│  │ Per-tx ChaCha20 CSPRNG                 │  │
+│  │ Immediate, revertible                  │  │
+│  └────────────────────────────────────────┘  │
+│                                              │
+│  ┌────────────────────────────────────────┐  │
+│  │ RandomBeaconHistory (System Contract)  │  │
+│  │ Stores per-block SoR on-chain          │  │
+│  │ Commit-reveal for gambling             │  │
+│  └────────────────────────────────────────┘  │
+└──────────────────────────────────────────────┘
 ```
 
-## Randomness Interfaces for Solidity Developers
+## How It Works
 
-Tokasino exposes three layers of randomness to smart contracts:
+### Randomness Generation
+
+1. The CL generates a VRF proof: `VRF(secret_key, block_number) → (output, proof)`
+2. `output` is sent to reth as `prev_randao` via Engine API
+3. Anyone can verify the proof on-chain — the value cannot be forged
+
+### Why VRF, Not Just Random Bytes?
+
+| | Native RNG | VRF | Threshold BLS |
+|---|---|---|---|
+| Verifiable | No | **Yes** | Yes |
+| Forgery-proof | No | **Yes** | Yes |
+| Unpredictable | Operator knows | Operator knows | No one knows |
+| Implementation | Trivial | **Phase 1** | Phase 2 |
+
+Native RNG (raw random bytes) cannot prove fairness — the operator could insert any value. VRF guarantees that the output is deterministically derived from the input and cannot be manipulated, with a cryptographic proof anyone can verify. This is the minimum requirement for **Provably Fair** gambling.
+
+## Randomness Interfaces for Solidity Developers
 
 ### 1. `block.prevrandao` (Existing EVM Opcode)
 
@@ -120,56 +133,95 @@ contract Casino {
 }
 ```
 
-## Random Beacon: Phased Approach
+## Development Phases
 
-### Phase 1 — VRF Beacon (Single Sequencer)
+### Phase 0 — Chain Runs (2-3 weeks)
 
-- Sequencer generates a VRF proof per block
-- Output is verifiable (anyone can check it wasn't manipulated)
-- Sequencer knows the result before publishing (trust required)
-- Fastest to ship (~2-3 person-months for CL)
+- reth-based custom node boots in dev mode
+- Custom `ChainSpec` with Tokasino chain ID and genesis
+- Basic Solidity contract deployment and execution verified
 
-### Phase 2 — Threshold BLS Beacon (Distributed Validators)
+### Phase 1 — VRF Randomness (4-6 weeks)
 
-- Validators run DKG (Distributed Key Generation) per epoch
-- Each block requires t+1 out of n signature shares to produce randomness
-- No single party can predict or bias the result
-- Gold standard for trustless gambling (~12-24 person-months for CL)
+- Custom CL process generating VRF proofs per block
+- Randomness precompile at `0x0b` (per-tx ChaCha20 CSPRNG)
+- RandomBeaconHistory system contract (commit-reveal for gambling)
+- VRF verifier contract for on-chain proof verification
+- **Casino dApps can launch with Provably Fair guarantees**
 
-The EL interface remains identical across phases — dApp code does not change when upgrading from VRF to Threshold BLS.
+### Phase 2 — Threshold BLS (Future)
+
+- Distributed validators run DKG per epoch
+- t+1 out of n signature shares required per block
+- No single party can predict or bias randomness
+- EL interface unchanged — dApp code does not change
+
+## Project Structure
+
+```
+tokasino/
+├── crates/
+│   ├── node/                  # Custom reth node binary
+│   │   ├── src/
+│   │   │   ├── main.rs        # NodeBuilder entry point
+│   │   │   ├── evm.rs         # MyEvmFactory + randomness precompile
+│   │   │   ├── executor.rs    # BlockExecutor wrapper (system contract call)
+│   │   │   └── payload.rs     # Custom payload builder
+│   │   └── Cargo.toml
+│   │
+│   ├── consensus/             # Custom CL process (VRF beacon)
+│   │   ├── src/
+│   │   │   ├── main.rs        # Standalone binary
+│   │   │   ├── vrf.rs         # VRF key management + proof generation
+│   │   │   └── engine.rs      # Engine API client (HTTP)
+│   │   └── Cargo.toml
+│   │
+│   └── contracts/             # Solidity contracts
+│       ├── src/
+│       │   ├── RandomBeaconHistory.sol
+│       │   ├── IRandomness.sol
+│       │   └── VRFVerifier.sol
+│       └── foundry.toml
+│
+├── Cargo.toml                 # Workspace root
+└── README.md
+```
 
 ## Tech Stack
 
-### Execution Layer (ethrex fork)
+### Execution Layer (reth extension)
 
-- Language: Rust
-- EVM: LEVM (Lambda EVM)
-- Base: [ethrex](https://github.com/lambdaclass/ethrex) by Lambdaclass
+- Base: [reth](https://github.com/paradigmxyz/reth) v1.11.3 (git dependency)
+- EVM: [revm](https://github.com/bluealloy/revm) (reth's built-in)
+- Pattern: `NodeBuilder` API — custom `EvmFactory`, `BlockExecutor`, `PayloadBuilder`
+- Per-tx CSPRNG: [`rand_chacha`](https://crates.io/crates/rand_chacha) (ChaCha20)
 
 ### Consensus Layer (Custom)
 
-- Language: Rust
-- Curve: BLS12-381 via [`blst`](https://github.com/supranational/blst)
-- Threshold BLS: [`blsful`](https://lib.rs/crates/blsful) (Kudelski audited)
-- Secret Sharing: [`vsss-rs`](https://crates.io/crates/vsss-rs) (Feldman/Pedersen VSS)
-- DKG: [`gennaro-dkg`](https://crates.io/crates/gennaro-dkg)
-- Per-tx CSPRNG: [`rand_chacha`](https://crates.io/crates/rand_chacha) (ChaCha20)
+- VRF: [`blst`](https://github.com/supranational/blst) (BLS12-381, NCC audited)
+- Future Threshold BLS: [`blsful`](https://lib.rs/crates/blsful) + [`gennaro-dkg`](https://crates.io/crates/gennaro-dkg)
+- Engine API client: [`reqwest`](https://crates.io/crates/reqwest) + [`alloy-rpc-types-engine`](https://docs.rs/alloy-rpc-types-engine)
 
-### Reference Implementations
+### Prior Art
 
-- [Flow `onflow/crypto`](https://github.com/onflow/crypto) — DKG architecture, beacon protocol
-- [drand](https://github.com/drand/drand) — Distributed randomness beacon design
-- [Sui `fastcrypto`](https://github.com/MystenLabs/fastcrypto) — Rust threshold BLS reference
-- [Aptos AIP-79](https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-79.md) — Weighted DKG
+| Project | Mechanism | EVM | Key Lesson |
+|---------|-----------|-----|------------|
+| [SKALE](https://skale.space/) | Threshold BLS precompile | Yes | Only production EVM chain with native threshold randomness |
+| [Oasis Sapphire](https://oasisprotocol.org/) | VRF + TEE precompile | Yes | EVM precompile interface design |
+| [Flow](https://flow.com/) | Threshold BLS beacon | Partial | Commit-reveal system contract pattern |
+| [Sui](https://sui.io/) | Threshold DKG/BLS | No | Consensus-parallel randomness generation |
+| [Aptos](https://aptos.dev/) | Weighted VRF/wVUF | No | Instant on-chain randomness API |
+| [drand](https://drand.love/) | Threshold BLS (standalone) | Via evmnet | External beacon integration option |
 
 ## Security Model
 
 | Property | Phase 1 (VRF) | Phase 2 (Threshold BLS) |
 |----------|---------------|-------------------------|
-| Verifiable | Yes | Yes |
-| Unbiasable | No (sequencer can withhold) | Yes (threshold) |
-| Unpredictable | No (sequencer knows first) | Yes (no one knows) |
-| Revert-resistant | Yes (via commit-reveal) | Yes (via commit-reveal) |
+| Verifiable | Yes — VRF proof on-chain | Yes — group public key |
+| Unbiasable | No — sequencer can withhold block | Yes — threshold guarantee |
+| Unpredictable | No — sequencer knows first | Yes — no one knows |
+| Revert-resistant | Yes — via commit-reveal | Yes — via commit-reveal |
+| Forgery-proof | Yes — VRF is deterministic | Yes — threshold signature |
 
 ## Why Not Just Use Chainlink VRF?
 

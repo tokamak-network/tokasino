@@ -1,0 +1,25 @@
+[package]
+name = "tokasino-node"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "tokasino"
+path = "src/main.rs"
+
+[dependencies]
+reth-ethereum = { workspace = true, features = ["test-utils", "pool"] }
+reth-tracing = { workspace = true }
+
+alloy-evm = { workspace = true }
+alloy-primitives = { workspace = true }
+alloy-genesis = { workspace = true }
+alloy-sol-types = { workspace = true }
+
+revm = { workspace = true }
+
+serde_json = { workspace = true }
+
+tokio = { workspace = true }
+eyre = { workspace = true }
