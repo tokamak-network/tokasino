@@ -1,8 +1,10 @@
 use alloy_primitives::B256;
 use eyre::{eyre, Result};
+use jsonwebtoken::{encode, EncodingKey, Header as JwtHeader, Algorithm};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// JSON-RPC request envelope.
 #[derive(Debug, Serialize)]
@@ -36,26 +38,49 @@ impl std::fmt::Display for JsonRpcError {
     }
 }
 
+/// JWT claims for Engine API authentication.
+#[derive(Debug, Serialize)]
+struct JwtClaims {
+    iat: u64,
+}
+
 /// Engine API client that talks to a reth execution layer node.
 pub struct EngineClient {
     client: Client,
     url: String,
-    jwt_token: Option<String>,
+    jwt_secret: Option<Vec<u8>>,
     next_id: std::sync::atomic::AtomicU64,
 }
 
 impl EngineClient {
     /// Create a new Engine API client pointing at the given EL URL.
     ///
-    /// `jwt_token` is the hex-encoded JWT secret for Engine API authentication.
+    /// `jwt_secret` is the hex-encoded JWT secret for Engine API authentication.
     /// Pass `None` to skip auth (useful for local development).
-    pub fn new(url: String, jwt_token: Option<String>) -> Self {
+    pub fn new(url: String, jwt_secret: Option<String>) -> Self {
+        let secret_bytes = jwt_secret.map(|s| {
+            let s = s.strip_prefix("0x").unwrap_or(&s);
+            hex::decode(s).expect("invalid hex JWT secret")
+        });
         Self {
             client: Client::new(),
             url,
-            jwt_token,
+            jwt_secret: secret_bytes,
             next_id: std::sync::atomic::AtomicU64::new(1),
         }
+    }
+
+    /// Generate a fresh JWT bearer token from the secret.
+    fn make_jwt_token(&self) -> Option<String> {
+        let secret = self.jwt_secret.as_ref()?;
+        let iat = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let claims = JwtClaims { iat };
+        let key = EncodingKey::from_secret(secret);
+        let header = JwtHeader::new(Algorithm::HS256);
+        encode(&header, &claims, &key).ok()
     }
 
     /// Send a raw JSON-RPC request and return the result value.
@@ -74,7 +99,7 @@ impl EngineClient {
         let mut req_builder = self.client.post(&self.url).json(&request);
 
         // Attach JWT bearer token if configured.
-        if let Some(ref token) = self.jwt_token {
+        if let Some(token) = self.make_jwt_token() {
             req_builder = req_builder.bearer_auth(token);
         }
 
@@ -123,6 +148,36 @@ impl EngineClient {
         tracing::debug!(payload_id, "engine_getPayloadV3");
 
         self.rpc_call("engine_getPayloadV3", params).await
+    }
+
+    /// Fetch the latest block hash from the EL via the public RPC (port 8545).
+    /// This is used to bootstrap the head hash at startup.
+    pub async fn get_latest_block_hash(&self, rpc_url: &str) -> Result<B256> {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0",
+            method: "eth_getBlockByNumber".to_string(),
+            params: json!(["latest", false]),
+            id: 0,
+        };
+        let response: JsonRpcResponse = self
+            .client
+            .post(rpc_url)
+            .json(&request)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        let block = response
+            .result
+            .ok_or_else(|| eyre!("no result in eth_getBlockByNumber"))?;
+        let hash_str = block
+            .get("hash")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| eyre!("no hash in block"))?;
+        hash_str
+            .parse::<B256>()
+            .map_err(|e| eyre!("invalid block hash: {e}"))
     }
 
     /// Send `engine_newPayloadV3` to submit an execution payload for validation.

@@ -58,8 +58,12 @@ async fn main() -> Result<()> {
         "Starting consensus loop"
     );
 
-    // Track the latest head block hash. Start with the zero hash (genesis).
-    let mut head_hash = B256::ZERO;
+    // Fetch genesis block hash from the EL's public RPC (not the Engine API).
+    let public_rpc = cli.el_url.replace("8551", "8545");
+    let genesis_hash = engine.get_latest_block_hash(&public_rpc).await?;
+    tracing::info!(%genesis_hash, "Fetched genesis block hash");
+
+    let mut head_hash = genesis_hash;
     let mut block_number: u64 = 0;
 
     loop {
