@@ -5,3 +5,7 @@
 vrf_key.bin
 crates/contracts/out/
 crates/contracts/cache/
+crates/contracts/lib/
+crates/contracts/broadcast/
+webapp/node_modules/
+webapp/dist/
