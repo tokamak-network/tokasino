@@ -27,7 +27,7 @@ struct Cli {
     el_url: String,
 
     /// Block time in seconds
-    #[arg(long, default_value_t = 3)]
+    #[arg(long, default_value_t = 10)]
     block_time: u64,
 
     /// JWT secret hex string for Engine API authentication.
