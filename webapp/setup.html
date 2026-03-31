@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokasino — Sequencer Setup</title>
+<link rel="stylesheet" href="shared/style.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  .container { max-width: 860px; height: 100%; display: flex; flex-direction: column; padding: 0.8rem 1.5rem; }
+
+  /* Top */
+  .top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .top-logo {
+    font-weight: 700; font-size: 1.1rem;
+    background: linear-gradient(135deg, var(--neon), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .top-label { font-family: var(--mono); font-size: 0.55rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-left: 0.5rem; }
+
+  /* Main layout */
+  .setup-main { flex: 1; display: grid; grid-template-columns: 5fr 4fr; gap: 0.8rem; min-height: 0; overflow: hidden; margin-top: 0.6rem; }
+
+  /* Steps column */
+  .steps-col { display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding-right: 0.3rem; }
+  .step-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 0.8rem; transition: all 0.4s; position: relative; overflow: visible;
+  }
+  .step-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--border); border-radius: 3px 0 0 3px; transition: background 0.3s;
+  }
+  .step-card.waiting { opacity: 0.4; }
+  .step-card.running { border-color: var(--gold); }
+  .step-card.running::before { background: var(--gold); }
+  .step-card.done { border-color: var(--neon); }
+  .step-card.done::before { background: var(--neon); }
+  .step-card.done .step-status { color: var(--neon); }
+  .step-card.running .step-status { color: var(--gold); }
+
+  .step-header { display: flex; justify-content: space-between; align-items: center; }
+  .step-num { font-family: var(--mono); font-size: 0.5rem; color: var(--neon); letter-spacing: 0.1em; text-transform: uppercase; }
+  .step-status { font-family: var(--mono); font-size: 0.45rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .step-title { font-weight: 700; font-size: 0.8rem; margin: 0.15rem 0; }
+  .step-desc { font-family: var(--mono); font-size: 0.5rem; color: var(--muted); line-height: 1.4; }
+
+  .step-data {
+    margin-top: 0.3rem; background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+    padding: 0.4rem 0.5rem; font-family: var(--mono); font-size: 0.48rem; line-height: 1.6;
+    display: none; animation: fadeUp 0.3s ease-out;
+  }
+  .step-data.show { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  .sd-row { display: flex; gap: 0.3rem; }
+  .sd-k { color: var(--muted); min-width: 5rem; flex-shrink: 0; }
+  .sd-v { word-break: break-all; }
+  .sd-v.neon { color: var(--neon); }
+  .sd-v.gold { color: var(--gold); }
+  .sd-v.blue { color: var(--blue); }
+
+  .step-connector { width: 2px; height: 0.6rem; background: var(--border); margin-left: 1rem; flex-shrink: 0; transition: background 0.3s; }
+  .step-connector.done { background: var(--neon); }
+
+  /* Terminal column */
+  .terminal {
+    background: #0c0c14; border: 1px solid var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .term-header {
+    padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 0.5rem; color: var(--muted);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .term-dots { display: flex; gap: 0.25rem; }
+  .term-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .term-dot.r { background: #ff5f57; }
+  .term-dot.y { background: #febc2e; }
+  .term-dot.g { background: #28c840; }
+  .term-body {
+    flex: 1; overflow-y: auto; padding: 0.5rem 0.6rem;
+    font-family: var(--mono); font-size: 0.5rem; line-height: 1.7; min-height: 0;
+  }
+  .term-line { animation: termIn 0.15s ease-out; }
+  @keyframes termIn { from { opacity: 0; } to { opacity: 1; } }
+  .term-line .t-time { color: var(--muted); margin-right: 0.3rem; }
+  .term-line .t-level { margin-right: 0.3rem; font-weight: 700; }
+  .term-line .t-level.info { color: var(--neon); }
+  .term-line .t-level.warn { color: var(--gold); }
+  .term-line .t-msg { color: var(--text); }
+  .term-line .t-kv { color: var(--blue); }
+  .term-cursor {
+    display: inline-block; width: 6px; height: 12px; background: var(--neon);
+    animation: blink 1s step-end infinite; vertical-align: middle;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Bottom bar */
+  .bottom-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 0.5rem; border-top: 1px solid var(--border); flex-shrink: 0; margin-top: 0.5rem;
+  }
+  .progress-bar {
+    flex: 1; height: 4px; background: var(--border); border-radius: 2px; margin-right: 1rem;
+    overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: var(--neon); border-radius: 2px; transition: width 0.5s ease; width: 0%; }
+  .bottom-actions { display: flex; gap: 0.5rem; align-items: center; }
+  .bottom-label { font-family: var(--mono); font-size: 0.55rem; color: var(--muted); }
+  .start-btn {
+    background: var(--neon); color: var(--bg); border: none; border-radius: 6px;
+    padding: 0.4rem 1rem; font-family: var(--sans); font-size: 0.75rem; font-weight: 700;
+    cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s;
+  }
+  .start-btn:hover { box-shadow: 0 0 15px var(--neon-dim); }
+  .start-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; box-shadow: none; }
+  .demo-link {
+    font-family: var(--mono); font-size: 0.65rem; padding: 0.4rem 0.8rem;
+    border: 1px solid var(--gold); border-radius: 6px; color: var(--gold);
+    display: none; transition: all 0.2s;
+  }
+  .demo-link:hover { background: var(--gold); color: var(--bg); text-decoration: none; }
+
+  /* Speech bubble */
+  .bubble {
+    background: #1a1a2e; border: 1px solid var(--gold); border-radius: 10px;
+    padding: 0.5rem 0.7rem; font-size: 0.65rem; line-height: 1.6;
+    color: var(--text); position: relative; margin-top: 0.3rem;
+    display: none; animation: bubbleIn 0.4s ease-out;
+  }
+  .bubble.show { display: block; max-height: 40vh; overflow-y: auto; }
+  @keyframes bubbleIn { from { opacity: 0; transform: translateY(5px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .bubble::before {
+    content: ''; position: absolute; top: -6px; left: 1rem;
+    width: 10px; height: 10px; background: #1a1a2e; border-left: 1px solid var(--gold);
+    border-top: 1px solid var(--gold); transform: rotate(45deg);
+  }
+  .bubble .b-title { font-weight: 700; color: var(--gold); font-size: 0.6rem; margin-bottom: 0.2rem; }
+  .bubble .b-body { color: #c8c8d8; }
+  .bubble .b-key { color: var(--neon); font-family: var(--mono); font-size: 0.58rem; }
+
+  @media(max-width: 700px) {
+    .setup-main { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="top-bar">
+    <div style="display:flex; align-items:baseline;">
+      <div class="top-logo">TOKASINO</div>
+      <span class="top-label">Sequencer Setup</span>
+    </div>
+    <div style="font-family:var(--mono); font-size:0.55rem; color:var(--muted);">
+      <span id="setupStatus">Ready to launch</span>
+    </div>
+  </div>
+
+  <div class="setup-main">
+
+    <!-- Left: Setup Steps -->
+    <div class="steps-col" id="stepsCol">
+
+      <div class="step-card waiting" id="step0">
+        <div class="step-header">
+          <span class="step-num">Step 1a</span>
+          <span class="step-status" id="step0Status">waiting</span>
+        </div>
+        <div class="step-title">Launch Execution Layer</div>
+        <div class="step-desc">Start op-reth node with custom randomness precompile at 0x0b</div>
+        <div class="step-data" id="step0Data"></div>
+        <div class="bubble" id="bubble0">
+          <div class="b-title">실행 레이어(EL)와 프리컴파일</div>
+          <div class="b-body">
+            실행 레이어(EL)는 <span class="b-key">스마트 컨트랙트를 실행하는 엔진</span>입니다.
+            이더리움의 Geth 같은 역할인데, 우리는 <span class="b-key">op-reth</span>를 포크해서 커스텀했어요.
+            <br><br>
+            <span class="b-key">프리컴파일(Precompile)</span>이란?<br>
+            솔리디티로 짜면 느리거나 불가능한 연산을 <span class="b-key">EVM 엔진 내부에 네이티브 코드로 미리 구현</span>해둔 것입니다.
+            특정 주소를 호출하면 바로 실행돼요. 이더리움에 이미 있는 예시:
+            <br>
+            &nbsp;&nbsp;0x01 = ecrecover (서명 복원)<br>
+            &nbsp;&nbsp;0x02 = SHA-256 해시<br>
+            &nbsp;&nbsp;... 0x0a까지 사용 중
+            <br><br>
+            <span class="b-key">왜 0x0b인가요?</span><br>
+            기존 프리컴파일이 <span class="b-key">0x01~0x0a</span>까지 사용 중이라,
+            충돌 없이 바로 다음 번호인 <span class="b-key">0x0b(11번)</span>에 우리의 난수 생성기를 배치했습니다.
+          </div>
+        </div>
+      </div>
+      <div class="step-connector" id="conn0"></div>
+
+      <div class="step-card waiting" id="step0b">
+        <div class="step-header">
+          <span class="step-num">Step 1b</span>
+          <span class="step-status" id="step0bStatus">waiting</span>
+        </div>
+        <div class="step-title">Randomness Precompile Detail</div>
+        <div class="step-desc">How the precompile at 0x0b generates random numbers internally</div>
+        <div class="step-data" id="step0bData"></div>
+        <div class="bubble" id="bubble0b">
+          <div class="b-title">seed는 어디서 오나요? (가장 중요!)</div>
+          <div class="b-body">
+            프리컴파일이 받는 seed는 <span class="b-key">block.prevrandao</span>에서 옵니다.
+            이것이 Tokasino 난수의 <span class="b-key">신뢰의 근원</span>이에요.<br><br>
+
+            <span style="color:var(--gold);">prevrandao란?</span><br>
+            모든 이더리움 블록에는 <span class="b-key">prevrandao</span>라는 필드가 있습니다.
+            원래 이더리움에서는 비콘체인의 RANDAO 믹스 값이 여기에 들어가요.
+            하지만 Tokasino에서는 이 자리에 <span class="b-key">시퀀서가 VRF로 계산한 난수</span>를 넣습니다.<br><br>
+
+            <span style="color:var(--gold);">VRF 난수가 만들어지는 과정:</span><br>
+            <span style="color:var(--muted); font-family:var(--mono); font-size:0.55rem;">
+            &nbsp;&nbsp;이전 블록 해시(0xab12...) + 블록번호(N)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&darr; 시퀀서의 BLS 비밀키로 서명<br>
+            &nbsp;&nbsp;96바이트 BLS 서명(=증명)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&darr; keccak256<br>
+            &nbsp;&nbsp;<span style="color:var(--gold);">0x3a8f...</span> = prevrandao (32바이트)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&darr; 이 값이 블록에 기록됨<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&darr; 솔리디티에서 block.prevrandao로 읽음<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&darr; 프리컴파일의 seed로 사용!
+            </span><br><br>
+
+            <span style="color:var(--gold);">왜 이것이 안전한가요?</span><br>
+            &bull; <span class="b-key">결정적</span>: 같은 입력이면 항상 같은 결과. 시퀀서가 마음대로 바꿀 수 없음<br>
+            &bull; <span class="b-key">예측 불가</span>: 비밀키 없이는 다음 블록의 값을 알 수 없음<br>
+            &bull; <span class="b-key">검증 가능</span>: 공개키로 누구나 "이 난수가 진짜인지" 확인 가능<br>
+            &bull; <span class="b-key">체이닝</span>: 블록 N의 해시 &rarr; 블록 N+1의 VRF 입력 &rarr; 연쇄적으로 연결<br><br>
+
+            즉, <span class="b-key">시퀀서조차 난수를 조작할 수 없는 구조</span>입니다.
+            VRF는 "서명"이기 때문에 입력이 정해지면 출력이 하나로 결정돼요.
+            다른 값을 내놓으면 공개키로 즉시 들통납니다.<br><br>
+
+            <span style="border-top:1px solid var(--border); display:block; padding-top:0.4rem; margin-top:0.2rem;">
+            <span style="color:var(--neon);">그런데 왜 프리컴파일에서 한번 더 가공하나요?</span><br>
+            prevrandao 자체는 블록당 <span class="b-key">하나의 고정값</span>이에요.
+            같은 블록의 모든 트랜잭션이 같은 prevrandao를 봅니다.
+            그래서 프리컴파일에서 <span class="b-key">카운터를 섞어서</span> 호출마다 다른 난수를 만듭니다:<br>
+            <span style="color:var(--muted); font-family:var(--mono); font-size:0.55rem;">
+            &nbsp;&nbsp;1번째 호출: keccak256(prevrandao + <span style="color:var(--neon);">0</span>) &rarr; 난수 A<br>
+            &nbsp;&nbsp;2번째 호출: keccak256(prevrandao + <span style="color:var(--neon);">1</span>) &rarr; 난수 B<br>
+            &nbsp;&nbsp;3번째 호출: keccak256(prevrandao + <span style="color:var(--neon);">2</span>) &rarr; 난수 C<br>
+            </span>
+            카운터 없으면? 한 블록에서 주사위 3개 굴리면 <span class="b-key">3개 다 같은 숫자!</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="step-connector" id="conn0b"></div>
+
+      <div class="step-card waiting" id="step0c">
+        <div class="step-header">
+          <span class="step-num">Step 1c</span>
+          <span class="step-status" id="step0cStatus">waiting</span>
+        </div>
+        <div class="step-title">ChaCha20 &amp; Final Output</div>
+        <div class="step-desc">Why we use ChaCha20 CSPRNG and how the final random number is produced</div>
+        <div class="step-data" id="step0cData"></div>
+        <div class="bubble" id="bubble0c">
+          <div class="b-title">왜 ChaCha20을 거치나요?</div>
+          <div class="b-body">
+            <span style="color:var(--neon);">3. ChaCha20 난수 생성기</span><br>
+            Step 2의 해시를 <span class="b-key">ChaCha20</span>이라는 CSPRNG의 시드(씨앗)로 넣습니다.<br><br>
+            <span style="color:var(--muted); font-size:0.58rem;">
+            CSPRNG = 암호학적으로 안전한 의사 난수 생성기<br>
+            (Google이 TLS/HTTPS에 사용하는 것과 같은 알고리즘)
+            </span><br><br>
+            왜 keccak256 해시를 그대로 안 쓰고 한 단계 더 거칠까요?<br>
+            &bull; keccak256은 입력을 알면 출력을 계산할 수 있습니다 (해시니까요).<br>
+            &bull; ChaCha20을 거치면 <span class="b-key">입력과 출력 사이의 관계가 완전히 끊어집니다</span>.<br>
+            &bull; 즉 <span class="b-key">이중 자물쇠</span>. seed를 알아도 최종 난수 예측이 불가능!<br><br>
+
+            <span style="color:var(--neon);">4. 32바이트 난수 반환</span><br>
+            ChaCha20이 <span class="b-key">32바이트(256비트)</span> 난수를 솔리디티에 반환합니다.<br><br>
+            <span style="color:var(--muted); font-family:var(--mono); font-size:0.55rem;">
+            &nbsp;&nbsp;전체 흐름:<br>
+            &nbsp;&nbsp;<span style="color:var(--blue);">seed</span> + <span style="color:var(--neon);">counter</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&darr; keccak256<br>
+            &nbsp;&nbsp;<span style="color:var(--gold);">0x91f3a7...</span> (해시)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&darr; ChaCha20 시드<br>
+            &nbsp;&nbsp;<span style="color:var(--neon);">0x7d2e3f...</span> (최종 난수!)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;가스: <span style="color:var(--gold);">100</span> (네이티브라 초고속)
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="step-connector" id="conn0c"></div>
+
+      <div class="step-card waiting" id="step1">
+        <div class="step-header">
+          <span class="step-num">Step 2</span>
+          <span class="step-status" id="step1Status">waiting</span>
+        </div>
+        <div class="step-title">Generate VRF Keypair</div>
+        <div class="step-desc">BLS12-381 keypair for deterministic, verifiable randomness</div>
+        <div class="step-data" id="step1Data"></div>
+        <div class="bubble" id="bubble1">
+          <div class="b-title">VRF가 뭔가요?</div>
+          <div class="b-body">
+            VRF(Verifiable Random Function)는 <span class="b-key">검증 가능한 난수 함수</span>입니다.
+            비밀키로 서명하면 <span class="b-key">랜덤한 값</span>이 나오는데, 누구나 공개키로
+            "이 값이 정말 그 키로 만들어졌는지" 확인할 수 있어요.
+            <br><br>
+            핵심: <span class="b-key">같은 입력 = 항상 같은 출력</span> (조작 불가),
+            하지만 비밀키 없이는 <span class="b-key">출력을 예측할 수 없음</span>.
+            카지노에 딱 맞는 성질이죠!
+          </div>
+        </div>
+      </div>
+      <div class="step-connector" id="conn1"></div>
+
+      <div class="step-card waiting" id="step2">
+        <div class="step-header">
+          <span class="step-num">Step 3</span>
+          <span class="step-status" id="step2Status">waiting</span>
+        </div>
+        <div class="step-title">Connect Engine API</div>
+        <div class="step-desc">JWT-authenticated connection to EL on port 8551</div>
+        <div class="step-data" id="step2Data"></div>
+        <div class="bubble" id="bubble2">
+          <div class="b-title">Engine API가 뭔가요?</div>
+          <div class="b-body">
+            합의 레이어(CL)가 실행 레이어(EL)에게 <span class="b-key">"이 블록을 만들어"</span>라고
+            지시하는 통로입니다.
+            이더리움 2.0에서 비콘체인이 실행 클라이언트에 연결하는 것과 같은 방식이에요.
+            <br><br>
+            여기서 중요한 건: CL이 VRF로 만든 랜덤 값을 <span class="b-key">prevRandao</span> 필드에 넣어서
+            EL에 전달한다는 것. 즉 <span class="b-key">블록의 난수는 합의 레이어가 결정</span>합니다.
+          </div>
+        </div>
+      </div>
+      <div class="step-connector" id="conn2"></div>
+
+      <div class="step-card waiting" id="step3">
+        <div class="step-header">
+          <span class="step-num">Step 4</span>
+          <span class="step-status" id="step3Status">waiting</span>
+        </div>
+        <div class="step-title">Load Genesis Block</div>
+        <div class="step-desc">Fetch genesis hash as initial VRF chain input</div>
+        <div class="step-data" id="step3Data"></div>
+        <div class="bubble" id="bubble3">
+          <div class="b-title">왜 제네시스 해시가 필요한가요?</div>
+          <div class="b-body">
+            VRF는 매 블록 <span class="b-key">이전 블록의 해시 + 블록 번호</span>를 입력으로 받아요.
+            그런데 첫 번째 블록은 "이전 블록"이 없잖아요?
+            그래서 제네시스(0번) 블록의 해시를 시작점으로 사용합니다.
+            <br><br>
+            이렇게 하면 <span class="b-key">블록 1의 난수 &rarr; 블록 2의 입력 &rarr; 블록 2의 난수 &rarr; ...</span>
+            로 체인처럼 연결되어, 어떤 블록의 난수도 조작할 수 없게 됩니다.
+          </div>
+        </div>
+      </div>
+      <div class="step-connector" id="conn3"></div>
+
+      <div class="step-card waiting" id="step4">
+        <div class="step-header">
+          <span class="step-num">Step 5</span>
+          <span class="step-status" id="step4Status">waiting</span>
+        </div>
+        <div class="step-title">First VRF Block</div>
+        <div class="step-desc">Compute VRF(genesis_hash || 1) and produce first block</div>
+        <div class="step-data" id="step4Data"></div>
+        <div class="bubble" id="bubble4">
+          <div class="b-title">첫 블록은 어떻게 만들어지나요?</div>
+          <div class="b-body">
+            시퀀서가 <span class="b-key">VRF(genesis_hash || 1)</span>을 계산합니다.
+            <br><br>
+            1. 입력값 준비: 제네시스 해시 + 블록번호 1<br>
+            2. BLS 비밀키로 서명 &rarr; 96바이트 증명(proof) 생성<br>
+            3. keccak256(증명) &rarr; 32바이트 <span class="b-key">난수 출력</span><br>
+            4. 이 값을 <span class="b-key">prevrandao</span>로 넣어 블록 생성<br>
+            5. Engine API로 EL에 전달 &rarr; <span class="b-key">블록 #1 확정!</span>
+            <br><br>
+            이후부터는 같은 과정이 매 블록(3초)마다 반복됩니다.
+          </div>
+        </div>
+      </div>
+      <div class="step-connector" id="conn4"></div>
+
+      <div class="step-card waiting" id="step5">
+        <div class="step-header">
+          <span class="step-num">Step 6</span>
+          <span class="step-status" id="step5Status">waiting</span>
+        </div>
+        <div class="step-title">Deploy Contracts</div>
+        <div class="step-desc">InstantDice, CoinFlip, Roulette, Lottery + 10 ETH house funding each</div>
+        <div class="step-data" id="step5Data"></div>
+        <div class="bubble" id="bubble5">
+          <div class="b-title">컨트랙트는 어떻게 난수를 쓰나요?</div>
+          <div class="b-body">
+            솔리디티에서 <span class="b-key">block.prevrandao</span>를 읽으면
+            시퀀서가 VRF로 만든 난수를 바로 가져올 수 있어요.
+            <br><br>
+            각 게임 컨트랙트는 이 값에 플레이어 주소, 게임 번호 등을 섞어서
+            <span class="b-key">게임마다 고유한 난수</span>를 만듭니다.
+            하우스에 10 ETH씩 넣어두면 당첨금을 바로 지급할 수 있어요.
+            <br><br>
+            결과적으로: <span class="b-key">베팅 &rarr; 한 트랜잭션으로 결과 확정 + 즉시 지급</span>.
+            오라클도, 대기 시간도 없습니다!
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Terminal -->
+    <div class="terminal">
+      <div class="term-header">
+        <div class="term-dots">
+          <div class="term-dot r"></div>
+          <div class="term-dot y"></div>
+          <div class="term-dot g"></div>
+        </div>
+        <span>tokasino-cl</span>
+      </div>
+      <div class="term-body" id="termBody">
+        <div class="term-line">
+          <span class="t-msg" style="color:var(--muted);">$ tokasino-cl --mode vrf --block_time 3</span>
+        </div>
+        <div class="term-line"><span class="t-cursor"></span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom-bar">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="bottom-actions">
+      <span class="bottom-label" id="progressLabel">0 / 6</span>
+      <button class="start-btn" id="startBtn">START SEQUENCER</button>
+      <a class="demo-link" id="demoLink" href="demo.html">OPEN DEMO &rarr;</a>
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="/src/setup.js"></script>
+</body>
+</html>

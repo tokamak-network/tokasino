@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokasino — Lottery</title>
+<link rel="stylesheet" href="shared/style.css">
+<style>
+  .progress-bar { background:var(--border); border-radius:6px; height:10px; margin-top:0.5rem; overflow:hidden; }
+  .progress-fill { height:100%; background:linear-gradient(90deg,var(--neon),var(--gold)); border-radius:6px; transition:width 0.4s ease; }
+  .number-picker { display:flex; gap:0.5rem; align-items:center; margin:1rem 0; }
+  .number-input { width:80px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.7rem; color:var(--text); font-family:var(--mono); font-size:1.2rem; text-align:center; }
+  .number-input:focus { outline:none; border-color:var(--neon); }
+  .ticket-list { display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.5rem; }
+  .ticket-num { background:var(--neon-dim); color:var(--neon); border:1px solid var(--neon); border-radius:6px; padding:0.3rem 0.6rem; font-family:var(--mono); font-size:0.75rem; font-weight:600; }
+  .round-item { background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:0.5rem; overflow:hidden; }
+  .round-header { display:flex; justify-content:space-between; align-items:center; padding:0.7rem 1rem; cursor:pointer; font-family:var(--mono); font-size:0.75rem; transition:background 0.15s; }
+  .round-header:hover { background:var(--border); }
+  .round-header .arrow { transition:transform 0.2s; color:var(--muted); }
+  .round-header.open .arrow { transform:rotate(90deg); }
+  .round-body { display:none; padding:0.5rem 1rem 0.8rem; border-top:1px solid var(--border); font-family:var(--mono); font-size:0.7rem; color:var(--muted); line-height:1.8; }
+  .round-body.open { display:block; }
+  .claim-btn { background:var(--gold); color:var(--bg); border:none; border-radius:6px; padding:0.4rem 1rem; font-family:var(--sans); font-size:0.75rem; font-weight:700; cursor:pointer; text-transform:uppercase; letter-spacing:0.05em; }
+  .claim-btn:hover { box-shadow:0 0 15px var(--gold-dim); }
+  .claim-btn:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; box-shadow:none; }
+  .draw-btn { width:100%; padding:0.8rem; border:none; border-radius:10px; font-family:var(--sans); font-size:0.95rem; font-weight:700; cursor:pointer; text-transform:uppercase; letter-spacing:0.06em; background:var(--gold); color:var(--bg); margin-top:0.5rem; transition:all 0.2s; }
+  .draw-btn:hover:not(:disabled) { box-shadow:0 0 25px var(--gold-dim); }
+  .draw-btn:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
+  .info-row { display:flex; justify-content:space-between; padding:0.3rem 0; font-family:var(--mono); font-size:0.75rem; }
+  .info-label { color:var(--muted); }
+  .info-val { color:var(--text); font-weight:600; }
+  .info-val.neon { color:var(--neon); }
+  .info-val.gold { color:var(--gold); }
+  .info-val.hot { color:var(--hot); }
+  .empty-msg { color:var(--muted); font-family:var(--mono); font-size:0.7rem; text-align:center; padding:1rem 0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>TOKASINO</h1>
+    <p>Lottery</p>
+    <a class="back-link" href="index.html">&larr; Back to Hub</a>
+  </header>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="dot dead" id="dotStatus"></div>
+      <span id="connStatus">Disconnected</span>
+    </div>
+    <div class="status-item">
+      <span>Block <span id="blockNum">&mdash;</span></span>
+    </div>
+    <div class="status-item">
+      <span>Bal <span id="balDisplay">&mdash;</span> ETH</span>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-bottom:0.75rem;">
+    <appkit-button />
+  </div>
+
+  <!-- Current Round -->
+  <div class="game-area" id="currentRoundPanel">
+    <div class="section-title">Current Round</div>
+
+    <div class="info-row">
+      <span class="info-label">Round</span>
+      <span class="info-val neon" id="roundId">&mdash;</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Status</span>
+      <span class="info-val" id="roundStatus">&mdash;</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Tickets sold</span>
+      <span class="info-val" id="ticketCount">&mdash;</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Prize pool</span>
+      <span class="info-val gold" id="prizePool">&mdash;</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Blocks remaining</span>
+      <span class="info-val" id="blocksRemaining">&mdash;</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+
+    <div class="number-picker">
+      <input type="number" class="number-input" id="numberInput" min="0" max="99" placeholder="0-99">
+      <button class="play-btn ready" id="buyBtn" style="flex:1;padding:0.7rem" disabled>
+        Buy Ticket (0.01 ETH)
+      </button>
+    </div>
+
+    <button class="draw-btn" id="drawBtn" disabled>
+      Draw Winner
+    </button>
+  </div>
+
+  <!-- Your Tickets -->
+  <div class="game-area" id="ticketsPanel">
+    <div class="section-title">Your Tickets (This Round)</div>
+    <div id="myTickets" class="empty-msg">Connect wallet to see tickets</div>
+  </div>
+
+  <!-- Past Rounds -->
+  <div class="game-area">
+    <div class="section-title">Past Rounds</div>
+    <div id="pastRounds" class="empty-msg">No past rounds</div>
+  </div>
+</div>
+
+<script type="module" src="/src/lottery.js"></script>
+</body>
+</html>

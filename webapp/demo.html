@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokasino — Demo</title>
+<link rel="stylesheet" href="shared/style.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  .container { max-width: 1200px; height: 100%; display: flex; flex-direction: column; padding: 0.6rem 1.5rem; }
+
+  /* ── Top bar ── */
+  .top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .top-logo {
+    font-weight: 700; font-size: 1.1rem;
+    background: linear-gradient(135deg, var(--neon), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .top-label { font-family: var(--mono); font-size: 0.55rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-left: 0.5rem; }
+  .top-right { display: flex; gap: 1rem; align-items: center; font-family: var(--mono); font-size: 0.6rem; color: var(--muted); }
+
+  /* ── VRF Pipeline (6-stage) ── */
+  .pipeline { display: flex; align-items: stretch; gap: 0; margin: 0.5rem 0 0.3rem; flex-shrink: 0; }
+  .pipe-stage {
+    flex: 1; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 0.4rem 0.6rem; transition: all 0.4s; position: relative; overflow: hidden;
+  }
+  .pipe-stage::after {
+    content: ''; position: absolute; inset: 0; background: var(--neon); opacity: 0;
+    border-radius: 8px; transition: opacity 0.3s; pointer-events: none;
+  }
+  .pipe-stage.pulse::after { opacity: 0.05; }
+  .pipe-stage.active { border-color: var(--neon); box-shadow: 0 0 12px var(--neon-dim); }
+  .pipe-stage.active::after { opacity: 0.08; }
+  .pipe-stage.active-gold { border-color: var(--gold); box-shadow: 0 0 12px var(--gold-dim); }
+  .pipe-stage.active-hot { border-color: var(--hot); box-shadow: 0 0 12px var(--hot-dim); }
+  .pipe-label { font-family: var(--mono); font-size: 0.42rem; color: var(--neon); letter-spacing: 0.1em; text-transform: uppercase; }
+  .pipe-title { font-weight: 700; font-size: 0.7rem; margin: 0.05rem 0; white-space: nowrap; }
+  .pipe-val {
+    font-family: var(--mono); font-size: 0.52rem; color: var(--gold);
+    word-break: break-all; min-height: 1em; transition: color 0.3s;
+  }
+  .pipe-val.dim { color: var(--muted); }
+  .pipe-arrow {
+    display: flex; align-items: center; padding: 0 0.15rem;
+    font-family: var(--mono); font-size: 0.8rem; color: var(--border); transition: color 0.3s; flex-shrink: 0;
+  }
+  .pipe-arrow.active { color: var(--neon); }
+
+  @keyframes dataFlow {
+    0% { left: -6px; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; }
+    100% { left: calc(100% + 6px); opacity: 0; }
+  }
+  .data-packet {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%; background: var(--neon);
+    box-shadow: 0 0 6px var(--neon); z-index: 5;
+    animation: dataFlow 0.5s ease-in-out forwards;
+  }
+
+  .pipe-detail {
+    font-family: var(--mono); font-size: 0.5rem; color: var(--muted);
+    text-align: center; flex-shrink: 0; min-height: 1em; margin-bottom: 0.3rem;
+  }
+  .pipe-detail .hl { color: var(--neon); }
+  .pipe-detail .gold { color: var(--gold); }
+
+  /* ── Main 3-column area ── */
+  .main-area { display: grid; grid-template-columns: 5fr 4fr 5fr; gap: 0.6rem; flex: 1; min-height: 0; overflow: hidden; }
+
+  /* ── Panels ── */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+  .panel-header {
+    padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 0.5rem; color: var(--muted);
+    letter-spacing: 0.1em; text-transform: uppercase; flex-shrink: 0;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel-body { flex: 1; overflow-y: auto; min-height: 0; }
+
+  /* ── Block feed entries ── */
+  .block-entry {
+    padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 0.5rem; line-height: 1.5;
+    animation: blockIn 0.4s ease-out; cursor: pointer; transition: background 0.2s;
+  }
+  .block-entry:hover { background: rgba(255,255,255,0.02); }
+  .block-entry.highlight { background: var(--neon-dim); }
+  .block-entry.selected { background: rgba(0,255,136,0.05); border-left: 2px solid var(--neon); }
+  @keyframes blockIn { from { opacity: 0; transform: translateY(-8px); background: var(--neon-dim); } to { opacity: 1; transform: translateY(0); } }
+  .be-top { display: flex; justify-content: space-between; align-items: center; }
+  .be-num { color: var(--text); font-weight: 700; font-size: 0.55rem; }
+  .be-new { font-size: 0.4rem; color: var(--neon); border: 1px solid var(--neon); border-radius: 3px; padding: 0 0.2rem; }
+  .be-row { display: flex; gap: 0.3rem; margin-top: 0.1rem; }
+  .be-label { color: var(--muted); min-width: 4.5rem; }
+  .be-val { word-break: break-all; }
+  .be-val.gold { color: var(--gold); }
+  .be-val.blue { color: var(--blue); }
+
+  /* ── VRF detail panel (middle) ── */
+  .vrf-detail { padding: 0.5rem 0.6rem; font-family: var(--mono); font-size: 0.5rem; line-height: 1.6; }
+  .vrf-step {
+    padding: 0.4rem 0.5rem; margin-bottom: 0.3rem;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    transition: all 0.3s;
+  }
+  .vrf-step.active { border-color: var(--neon); background: rgba(0,255,136,0.03); }
+  .vrf-step-num { color: var(--neon); font-weight: 700; font-size: 0.5rem; }
+  .vrf-step-title { color: var(--text); font-weight: 700; font-size: 0.55rem; margin: 0.1rem 0; }
+  .vrf-step-val { color: var(--gold); word-break: break-all; font-size: 0.48rem; }
+  .vrf-step-desc { color: var(--muted); font-size: 0.45rem; margin-top: 0.1rem; }
+  .vrf-arrow { text-align: center; color: var(--border); font-size: 0.7rem; margin: 0.1rem 0; transition: color 0.3s; }
+  .vrf-arrow.active { color: var(--neon); }
+
+  /* ── Right panel ── */
+  .right-panel { display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
+  .game-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; flex-shrink: 0; }
+  .game-account { font-family: var(--mono); font-size: 0.55rem; margin-bottom: 0.4rem; }
+  .dice-row { display: flex; gap: 0.3rem; justify-content: center; margin: 0.3rem 0; }
+  .dice-btn {
+    width: 2.2rem; height: 2.2rem; display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; background: var(--bg); border: 2px solid var(--border);
+    border-radius: 7px; cursor: pointer; transition: all 0.15s;
+  }
+  .dice-btn:hover { border-color: var(--neon); transform: scale(1.05); }
+  .dice-btn.selected { border-color: var(--neon); background: var(--neon-dim); box-shadow: 0 0 10px var(--neon-dim); }
+  .bet-row { display: flex; gap: 0.25rem; align-items: center; justify-content: center; margin: 0.3rem 0; }
+  .bet-preset { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.4rem; color: var(--muted); font-family: var(--mono); font-size: 0.5rem; cursor: pointer; }
+  .bet-preset:hover { border-color: var(--text); color: var(--text); }
+  .bet-input { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.3rem; color: var(--text); font-family: var(--mono); font-size: 0.6rem; text-align: center; width: 4rem; }
+  .bet-input:focus { outline: none; border-color: var(--neon); }
+  .roll-btn {
+    width: 100%; padding: 0.45rem; border: none; border-radius: 7px;
+    font-family: var(--sans); font-size: 0.8rem; font-weight: 700;
+    cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s;
+  }
+  .roll-btn.ready { background: var(--neon); color: var(--bg); }
+  .roll-btn.ready:hover { box-shadow: 0 0 15px var(--neon-dim); }
+  .roll-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+  /* Trace */
+  .trace-panel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .trace-panel .panel { flex: 1; min-height: 0; }
+  .trace-body { padding: 0.4rem 0.6rem; font-family: var(--mono); font-size: 0.5rem; line-height: 1.7; overflow-y: auto; height: 100%; }
+  .tl { display: flex; gap: 0.3rem; }
+  .tl-k { color: var(--muted); min-width: 5.5rem; flex-shrink: 0; }
+  .tl-v { word-break: break-all; }
+  .tl-v.neon { color: var(--neon); }
+  .tl-v.gold { color: var(--gold); }
+  .tl-v.hot { color: var(--hot); }
+  .tl-v.blue { color: var(--blue); }
+  .t-sep { border-top: 1px solid var(--border); margin: 0.25rem 0; }
+
+  /* Result overlay */
+  .result-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; align-items: center; justify-content: center; }
+  .result-overlay.show { display: flex; }
+  .result-card { background: var(--surface); border: 2px solid var(--border); border-radius: 14px; padding: 1.5rem 2rem; text-align: center; max-width: 340px; width: 90%; animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .result-card.win { border-color: var(--neon); }
+  .result-card.lose { border-color: var(--hot); }
+  .result-emoji { font-size: 3rem; }
+  .result-title { font-size: 1.2rem; font-weight: 700; }
+  .result-title.win { color: var(--neon); }
+  .result-title.lose { color: var(--hot); }
+  .result-payout { font-size: 1.3rem; font-weight: 700; color: var(--gold); margin: 0.2rem 0; }
+  .result-detail { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); }
+  .result-seed { font-family: var(--mono); font-size: 0.45rem; color: var(--muted); word-break: break-all; margin-top: 0.4rem; padding: 0.3rem; background: var(--bg); border-radius: 5px; }
+  .result-close { margin-top: 0.5rem; background: transparent; border: 1px solid var(--border); color: var(--text); padding: 0.35rem 1rem; border-radius: 100px; font-family: var(--sans); cursor: pointer; font-size: 0.75rem; }
+  .result-close:hover { border-color: var(--text); }
+
+  @media(max-width: 900px) {
+    .main-area { grid-template-columns: 1fr; }
+    .pipeline { flex-wrap: wrap; gap: 0.2rem; }
+    .pipe-arrow { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div style="display:flex; align-items:baseline;">
+      <div class="top-logo">TOKASINO</div>
+      <span class="top-label">VRF Randomness Demo</span>
+    </div>
+    <div class="top-right">
+      <span><span class="dot dead" id="dotStatus" style="display:inline-block; vertical-align:middle; margin-right:0.2rem;"></span> Block <strong id="topBlock">&mdash;</strong></span>
+      <span>Chain <strong id="topChain">&mdash;</strong></span>
+    </div>
+  </div>
+
+  <!-- 6-stage pipeline: VRF Input → BLS Sign → keccak → prevrandao → Contract → Result -->
+  <div class="pipeline">
+    <div class="pipe-stage" id="pipe0">
+      <div class="pipe-label">VRF Input</div>
+      <div class="pipe-title">parent || #N</div>
+      <div class="pipe-val dim" id="pipe0Val">waiting...</div>
+    </div>
+    <div class="pipe-arrow" id="arrow0">&rarr;</div>
+    <div class="pipe-stage" id="pipe1">
+      <div class="pipe-label">BLS12-381</div>
+      <div class="pipe-title">Sign(input)</div>
+      <div class="pipe-val dim" id="pipe1Val">waiting...</div>
+    </div>
+    <div class="pipe-arrow" id="arrow1">&rarr;</div>
+    <div class="pipe-stage" id="pipe2">
+      <div class="pipe-label">Hash</div>
+      <div class="pipe-title">keccak256(sig)</div>
+      <div class="pipe-val dim" id="pipe2Val">waiting...</div>
+    </div>
+    <div class="pipe-arrow" id="arrow2">&rarr;</div>
+    <div class="pipe-stage" id="pipe3">
+      <div class="pipe-label">EVM</div>
+      <div class="pipe-title">prevrandao</div>
+      <div class="pipe-val dim" id="pipe3Val">waiting...</div>
+    </div>
+    <div class="pipe-arrow" id="arrow3">&rarr;</div>
+    <div class="pipe-stage" id="pipe4">
+      <div class="pipe-label">Contract</div>
+      <div class="pipe-title">keccak256(...)</div>
+      <div class="pipe-val dim" id="pipe4Val">&mdash;</div>
+    </div>
+    <div class="pipe-arrow" id="arrow4">&rarr;</div>
+    <div class="pipe-stage" id="pipe5">
+      <div class="pipe-label">Result</div>
+      <div class="pipe-title">Outcome</div>
+      <div class="pipe-val dim" id="pipe5Val">&mdash;</div>
+    </div>
+  </div>
+  <div class="pipe-detail" id="pipeDetail">Sequencer: VRF(parent_hash || block_number) &rarr; BLS sign &rarr; keccak256 &rarr; prevrandao</div>
+
+  <!-- Main 3-column: blocks | VRF detail | game -->
+  <div class="main-area">
+
+    <!-- Left: Block Feed -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>Live Blocks</span>
+        <span id="blockCount">0 blocks</span>
+      </div>
+      <div class="panel-body" id="blockFeed"></div>
+    </div>
+
+    <!-- Middle: VRF Computation Detail -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>VRF Computation</span>
+        <span id="vrfBlockLabel">latest</span>
+      </div>
+      <div class="panel-body">
+        <div class="vrf-detail" id="vrfDetail">
+          <div class="vrf-step" id="vrfStep1">
+            <div class="vrf-step-num">1. INPUT</div>
+            <div class="vrf-step-title">parent_hash || block_number</div>
+            <div class="vrf-step-val" id="vrfInput">&mdash;</div>
+            <div class="vrf-step-desc">Previous block's hash concatenated with new block number</div>
+          </div>
+          <div class="vrf-arrow" id="vrfArrow1">&darr;</div>
+          <div class="vrf-step" id="vrfStep2">
+            <div class="vrf-step-num">2. BLS SIGN</div>
+            <div class="vrf-step-title">BLS12-381 Signature (DST: TOKASINO-VRF-V1)</div>
+            <div class="vrf-step-val" id="vrfSig">&mdash;</div>
+            <div class="vrf-step-desc">96-byte BLS min-sig proof (deterministic, verifiable)</div>
+          </div>
+          <div class="vrf-arrow" id="vrfArrow2">&darr;</div>
+          <div class="vrf-step" id="vrfStep3">
+            <div class="vrf-step-num">3. VRF OUTPUT</div>
+            <div class="vrf-step-title">keccak256(signature) = prevrandao</div>
+            <div class="vrf-step-val" id="vrfOutput">&mdash;</div>
+            <div class="vrf-step-desc">32-byte random value injected into block via Engine API</div>
+          </div>
+          <div class="vrf-arrow" id="vrfArrow3">&darr;</div>
+          <div class="vrf-step" id="vrfStep4">
+            <div class="vrf-step-num">4. IN CONTRACT</div>
+            <div class="vrf-step-title">keccak256(prevrandao, blockNum, sender, salt)</div>
+            <div class="vrf-step-val" id="vrfGameSeed">&mdash;</div>
+            <div class="vrf-step-desc">Per-game unique seed derived from VRF output</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Game + Trace -->
+    <div class="right-panel">
+      <div class="game-box">
+        <div class="game-account">
+          <span style="color:var(--muted);">Demo:</span> <span id="demoAccount" style="color:var(--neon);">...</span>
+          <span style="color:var(--muted); margin-left:0.3rem;">Bal:</span> <span id="demoBalance" style="color:var(--gold);">...</span>
+        </div>
+        <div class="dice-row" id="dicePicker">
+          <button class="dice-btn" data-num="1">&#9856;</button>
+          <button class="dice-btn" data-num="2">&#9857;</button>
+          <button class="dice-btn" data-num="3">&#9858;</button>
+          <button class="dice-btn" data-num="4">&#9859;</button>
+          <button class="dice-btn" data-num="5">&#9860;</button>
+          <button class="dice-btn" data-num="6">&#9861;</button>
+        </div>
+        <div class="bet-row">
+          <button class="bet-preset" data-bet="0.001">min</button>
+          <button class="bet-preset" data-bet="0.01">0.01</button>
+          <button class="bet-preset" data-bet="0.05">0.05</button>
+          <input class="bet-input" id="betAmount" type="text" value="0.01">
+        </div>
+        <button class="roll-btn ready" id="rollBtn" disabled>ROLL DICE</button>
+      </div>
+
+      <div class="trace-panel">
+        <div class="panel" style="flex:1;">
+          <div class="panel-header">
+            <span>TX Trace</span>
+            <span id="traceStatus" style="color:var(--muted);">idle</span>
+          </div>
+          <div class="panel-body">
+            <div class="trace-body" id="txTrace">
+              <div class="tl"><span class="tl-k">Status</span><span class="tl-v" style="color:var(--muted);">Pick a number and roll.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Result overlay -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card" id="resultCard">
+    <div class="result-emoji" id="resultEmoji"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-payout" id="resultPayout"></div>
+    <div class="result-detail" id="resultDetail"></div>
+    <div class="result-seed" id="resultSeed"></div>
+    <button class="result-close" id="resultClose">OK</button>
+  </div>
+</div>
+
+<script type="module" src="/src/demo.js"></script>
+</body>
+</html>

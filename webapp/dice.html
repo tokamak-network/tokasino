@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokasino — Instant Dice</title>
+<link rel="stylesheet" href="shared/style.css">
+<style>
+  .dice-picker { display:grid; grid-template-columns:repeat(6,1fr); gap:0.5rem; margin-bottom:1.5rem; }
+  .dice-btn { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:1.8rem; background:var(--bg); border:2px solid var(--border); border-radius:12px; cursor:pointer; transition:all 0.15s; }
+  .dice-btn:hover { border-color:var(--neon); transform:scale(1.05); }
+  .dice-btn.selected { border-color:var(--neon); background:var(--neon-dim); box-shadow:0 0 20px var(--neon-dim); }
+  @media(max-width:500px) { .dice-picker { grid-template-columns:repeat(3,1fr); } }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>TOKASINO</h1>
+    <p>Instant On-Chain Dice</p>
+    <a class="back-link" href="index.html">&larr; back to lobby</a>
+  </header>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="dot live" id="dotStatus"></div>
+      <span>Block <span id="blockNum">&mdash;</span></span>
+    </div>
+    <div class="status-item">
+      <span>Chain <span id="chainId">&mdash;</span></span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Balance</div>
+      <div class="stat-val" id="balance">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">House</div>
+      <div class="stat-val" id="houseBalance">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Games</div>
+      <div class="stat-val" id="totalGames">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-val" id="winRate">&mdash;</div>
+    </div>
+  </div>
+
+  <div class="game-area">
+    <div class="section-title">Pick Your Number</div>
+    <div class="dice-picker" id="dicePicker">
+      <button class="dice-btn" data-num="1">&#9856;</button>
+      <button class="dice-btn" data-num="2">&#9857;</button>
+      <button class="dice-btn" data-num="3">&#9858;</button>
+      <button class="dice-btn" data-num="4">&#9859;</button>
+      <button class="dice-btn" data-num="5">&#9860;</button>
+      <button class="dice-btn" data-num="6">&#9861;</button>
+    </div>
+
+    <div class="section-title">Bet Amount (ETH)</div>
+    <div class="bet-row">
+      <button class="bet-preset" data-bet="0.001">0.001</button>
+      <button class="bet-preset" data-bet="0.01">0.01</button>
+      <button class="bet-preset" data-bet="0.05">0.05</button>
+      <button class="bet-preset" data-bet="0.1">0.1</button>
+      <input class="bet-input" id="betAmount" type="text" value="0.01" placeholder="ETH">
+    </div>
+
+    <div id="walletSection" style="margin-bottom:0.75rem; text-align:center;">
+      <appkit-button />
+    </div>
+    <button class="play-btn ready" id="playBtn" style="display:none;">ROLL DICE</button>
+  </div>
+
+  <div class="history">
+    <div class="section-title">Your Games</div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<!-- Result overlay -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card" id="resultCard">
+    <div class="result-emoji" id="resultEmoji"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-payout" id="resultPayout"></div>
+    <div class="result-detail" id="resultDetail"></div>
+    <div class="result-seed" id="resultSeed"></div>
+    <button class="result-close" id="resultClose">Play Again</button>
+  </div>
+</div>
+
+<script type="module" src="/src/dice.js"></script>
+</body>
+</html>

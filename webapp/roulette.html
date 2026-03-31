@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokasino — Roulette</title>
+<link rel="stylesheet" href="shared/style.css">
+<style>
+  /* Roulette table */
+  .roulette-table { margin:1rem 0; }
+
+  .zero-row {
+    margin-bottom:2px;
+  }
+  .zero-btn {
+    width:100%; padding:0.8rem; border:none; border-radius:8px 8px 0 0;
+    background:#0a6e2e; color:#fff; font-family:var(--mono); font-size:1.1rem;
+    font-weight:700; cursor:pointer; transition:all 0.15s;
+  }
+  .zero-btn:hover { background:#0c8a38; }
+  .zero-btn.selected { outline:3px solid var(--gold); outline-offset:-3px; }
+
+  .number-grid {
+    display:grid; grid-template-columns:repeat(12,1fr); gap:2px;
+  }
+  .num-btn {
+    padding:0.6rem 0; border:none; border-radius:4px;
+    color:#fff; font-family:var(--mono); font-size:0.8rem;
+    font-weight:700; cursor:pointer; transition:all 0.15s;
+    text-align:center;
+  }
+  .num-btn:hover { opacity:0.8; transform:scale(1.05); }
+  .num-btn.red { background:#c0392b; }
+  .num-btn.black { background:#1a1a2e; border:1px solid #333; }
+  .num-btn.selected { outline:3px solid var(--gold); outline-offset:-3px; }
+
+  .outside-bets {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:2px; margin-top:2px;
+  }
+  .outside-bets.row2 { grid-template-columns:repeat(3,1fr); }
+  .out-btn {
+    padding:0.6rem; border:none; border-radius:4px;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--text); font-family:var(--mono); font-size:0.7rem;
+    font-weight:600; cursor:pointer; transition:all 0.15s;
+    text-transform:uppercase; text-align:center;
+  }
+  .out-btn:hover { border-color:var(--neon); color:var(--neon); }
+  .out-btn.selected { border-color:var(--gold); color:var(--gold); background:var(--gold-dim); }
+  .out-btn.red-btn { color:#c0392b; }
+  .out-btn.black-btn { color:#aaa; }
+
+  .selected-bet {
+    text-align:center; margin:1rem 0; font-family:var(--mono); font-size:0.85rem;
+    color:var(--gold); min-height:1.4rem;
+  }
+
+  .result-number {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:70px; height:70px; border-radius:50%;
+    font-size:2rem; font-weight:700; font-family:var(--mono);
+    margin:0.5rem 0;
+  }
+  .result-number.rn-red { background:#c0392b; color:#fff; }
+  .result-number.rn-black { background:#1a1a2e; color:#fff; border:2px solid #444; }
+  .result-number.rn-green { background:#0a6e2e; color:#fff; }
+
+  .history-color {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.8rem; height:1.8rem; border-radius:50%;
+    font-size:0.6rem; font-weight:700; color:#fff;
+  }
+  .history-color.hc-red { background:#c0392b; }
+  .history-color.hc-black { background:#1a1a2e; border:1px solid #444; }
+  .history-color.hc-green { background:#0a6e2e; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>TOKASINO</h1>
+    <p>Roulette</p>
+    <a href="index.html" class="back-link">&larr; Back to Hub</a>
+  </header>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="dot dead" id="dotStatus"></div>
+      <span id="connStatus">Disconnected</span>
+    </div>
+    <div class="status-item">
+      <span>Block <span id="blockNum">&mdash;</span></span>
+    </div>
+    <div class="status-item">
+      <span>Chain <span id="chainId">&mdash;</span></span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Balance</div>
+      <div class="stat-val" id="balance">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">House</div>
+      <div class="stat-val" id="house">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Spins</div>
+      <div class="stat-val" id="totalGames">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Your W/L</div>
+      <div class="stat-val" id="winLoss">0/0</div>
+    </div>
+  </div>
+
+  <div class="game-area">
+    <div class="section-title">Place Your Bet</div>
+
+    <div class="roulette-table">
+      <!-- Zero -->
+      <div class="zero-row">
+        <button class="zero-btn" id="zeroBtn">0</button>
+      </div>
+
+      <!-- Number grid: 3 rows x 12 columns -->
+      <div class="number-grid" id="numberGrid"></div>
+
+      <!-- Outside bets row 1: dozens -->
+      <div class="outside-bets" style="margin-top:4px;">
+        <button class="out-btn" data-bet-type="7" data-label="1st 12">1st 12</button>
+        <button class="out-btn" data-bet-type="8" data-label="2nd 12">2nd 12</button>
+        <button class="out-btn" data-bet-type="9" data-label="3rd 12">3rd 12</button>
+      </div>
+      <!-- Outside bets row 2 -->
+      <div class="outside-bets row2" style="margin-top:2px;">
+        <button class="out-btn red-btn" data-bet-type="1" data-label="Red">Red</button>
+        <button class="out-btn" data-bet-type="3" data-label="Even">Even</button>
+        <button class="out-btn" data-bet-type="5" data-label="Low 1-18">Low 1-18</button>
+      </div>
+      <div class="outside-bets row2" style="margin-top:2px;">
+        <button class="out-btn black-btn" data-bet-type="2" data-label="Black">Black</button>
+        <button class="out-btn" data-bet-type="4" data-label="Odd">Odd</button>
+        <button class="out-btn" data-bet-type="6" data-label="High 19-36">High 19-36</button>
+      </div>
+    </div>
+
+    <div class="selected-bet" id="selectedBet">No bet selected</div>
+
+    <div class="bet-row">
+      <button class="bet-preset" data-bet="0.001">0.001</button>
+      <button class="bet-preset" data-bet="0.005">0.005</button>
+      <input type="text" class="bet-input" id="betAmount" value="0.01" placeholder="ETH">
+      <button class="bet-preset" data-bet="0.05">0.05</button>
+      <button class="bet-preset" data-bet="0.1">0.1</button>
+    </div>
+
+    <div id="walletSection" style="margin-bottom:0.75rem; text-align:center;">
+      <appkit-button />
+    </div>
+    <button class="play-btn ready" id="spinBtn" style="display:none;">SPIN</button>
+  </div>
+
+  <!-- Result overlay -->
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-card" id="resultCard">
+      <div class="result-emoji" id="resultEmoji"></div>
+      <div class="result-number" id="resultNumber"></div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-payout" id="resultPayout"></div>
+      <div class="result-detail" id="resultDetail"></div>
+      <div class="result-seed" id="resultSeed"></div>
+      <button class="result-close" id="resultClose">Close</button>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history" id="historySection" style="display:none;">
+    <div class="section-title">History</div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<script type="module" src="/src/roulette.js"></script>
+</body>
+</html>

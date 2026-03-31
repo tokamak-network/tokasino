@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokasino — Coin Flip</title>
+<link rel="stylesheet" href="shared/style.css">
+<style>
+/* Coin choice buttons */
+.coin-picker { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+.coin-btn {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:1.5rem 1rem; background:var(--bg); border:2px solid var(--border);
+  border-radius:16px; cursor:pointer; transition:all 0.2s; gap:0.5rem;
+}
+.coin-btn .coin-icon { font-size:3rem; transition:transform 0.3s; }
+.coin-btn .coin-label {
+  font-family:var(--mono); font-size:0.85rem; font-weight:700;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--muted);
+  transition:color 0.2s;
+}
+.coin-btn:hover { transform:translateY(-2px); }
+.coin-btn:hover .coin-icon { transform:scale(1.1); }
+
+.coin-btn.heads:hover,
+.coin-btn.heads.selected { border-color:var(--neon); background:var(--neon-dim); box-shadow:0 0 25px var(--neon-dim); }
+.coin-btn.heads.selected .coin-label { color:var(--neon); }
+
+.coin-btn.tails:hover,
+.coin-btn.tails.selected { border-color:var(--hot); background:var(--hot-dim); box-shadow:0 0 25px var(--hot-dim); }
+.coin-btn.tails.selected .coin-label { color:var(--hot); }
+
+/* Coin flip animation */
+@keyframes coinFlip {
+  0%   { transform:rotateY(0deg) scale(1); }
+  25%  { transform:rotateY(900deg) scale(1.3); }
+  50%  { transform:rotateY(1800deg) scale(1); }
+  75%  { transform:rotateY(2520deg) scale(1.15); }
+  100% { transform:rotateY(3240deg) scale(1); }
+}
+.coin-anim {
+  display:inline-block; perspective:400px;
+}
+.coin-anim.flipping {
+  animation:coinFlip 1.2s cubic-bezier(0.25,0.1,0.25,1);
+}
+
+/* Multiplier badge */
+.multiplier {
+  text-align:center; font-family:var(--mono); font-size:0.75rem;
+  color:var(--gold); margin-bottom:1rem;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>TOKASINO</h1>
+    <p>Coin Flip</p>
+    <a class="back-link" href="index.html">&larr; Back to Games</a>
+  </header>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <appkit-button size="sm" />
+    </div>
+    <div class="status-item">
+      <div class="dot" id="dotStatus"></div>
+      <span id="connStatus">Disconnected</span>
+    </div>
+    <div class="status-item">
+      <span>Block <span id="blockNum">&mdash;</span></span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Balance</div>
+      <div class="stat-val" id="balance">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">House</div>
+      <div class="stat-val" id="houseBalance">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Games</div>
+      <div class="stat-val" id="totalGames">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-val" id="winRate">&mdash;</div>
+    </div>
+  </div>
+
+  <div class="game-area">
+    <div class="section-title">Pick Your Side</div>
+    <div class="coin-picker">
+      <button class="coin-btn heads" data-side="heads" id="btnHeads">
+        <span class="coin-icon">&#x1FA99;</span>
+        <span class="coin-label">Heads</span>
+      </button>
+      <button class="coin-btn tails" data-side="tails" id="btnTails">
+        <span class="coin-icon">&#x1FA99;</span>
+        <span class="coin-label">Tails</span>
+      </button>
+    </div>
+
+    <div class="multiplier">Win Multiplier: 1.95x &middot; House Edge 2.5%</div>
+
+    <div class="section-title">Bet Amount (ETH)</div>
+    <div class="bet-row">
+      <button class="bet-preset" data-bet="0.001">0.001</button>
+      <button class="bet-preset" data-bet="0.01">0.01</button>
+      <button class="bet-preset" data-bet="0.05">0.05</button>
+      <button class="bet-preset" data-bet="0.1">0.1</button>
+      <input class="bet-input" id="betAmount" type="text" value="0.01" placeholder="ETH">
+    </div>
+
+    <button class="play-btn ready" id="playBtn" style="display:none;">FLIP</button>
+  </div>
+
+  <div class="history">
+    <div class="section-title">Your Games</div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<!-- Result overlay -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card" id="resultCard">
+    <div class="result-emoji coin-anim" id="resultEmoji"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-payout" id="resultPayout"></div>
+    <div class="result-detail" id="resultDetail"></div>
+    <div class="result-seed" id="resultSeed"></div>
+    <button class="result-close" id="resultClose">Play Again</button>
+  </div>
+</div>
+
+<script type="module" src="/src/coinflip.js"></script>
+</body>
+</html>
