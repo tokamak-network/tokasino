@@ -1,4 +1,4 @@
-// Tokasino AppKit — Reown wallet connection + ethers.js helpers
+// Enshrined VRF AppKit — Reown wallet connection + ethers.js helpers
 
 import { createAppKit } from '@reown/appkit'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
@@ -7,7 +7,7 @@ import { BrowserProvider, Contract, JsonRpcProvider, parseEther, formatEther } f
 import { CHAIN_ID, RPC_URL, CHAIN_NAME, contracts, abis } from './config.js'
 
 // --- Custom chain definition ---
-const tokasinoChain = defineChain({
+const enshrinedVrfChain = defineChain({
   id: CHAIN_ID,
   caipNetworkId: `eip155:${CHAIN_ID}`,
   chainNamespace: 'eip155',
@@ -23,10 +23,10 @@ const projectId = import.meta.env.VITE_REOWN_PROJECT_ID || 'ed9db8435ea432ec164c
 
 const appkit = createAppKit({
   adapters: [new EthersAdapter()],
-  networks: [tokasinoChain],
+  networks: [enshrinedVrfChain],
   metadata: {
-    name: 'Tokasino',
-    description: 'On-Chain Casino powered by VRF randomness',
+    name: 'Enshrined VRF',
+    description: 'OP Stack L2 with protocol-level VRF randomness',
     url: window.location.origin,
     icons: [],
   },

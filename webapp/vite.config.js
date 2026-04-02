@@ -16,6 +16,8 @@ export default defineConfig({
         demo: resolve(__dirname, 'demo.html'),
         setup: resolve(__dirname, 'setup.html'),
         randomness: resolve(__dirname, 'randomness.html'),
+        rps: resolve(__dirname, 'rps.html'),
+        liquidity: resolve(__dirname, 'liquidity.html'),
       },
     },
   },

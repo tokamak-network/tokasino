@@ -1,4 +1,4 @@
-// Tokasino Game Hub — polls block number and card stats
+// Enshrined VRF Game Hub — polls block number and card stats
 
 import { getReadContract, getBlockNumber, getAppKit, formatEther } from './appkit.js'
 import { CHAIN_ID } from './config.js'
@@ -18,6 +18,7 @@ async function pollStatus() {
 
 async function pollCardStats() {
   const games = [
+    { key: 'rps', name: 'rps', method: 'totalGames' },
     { key: 'dice', name: 'dice', method: 'totalGames' },
     { key: 'coinflip', name: 'coinFlip', method: 'totalGames' },
     { key: 'roulette', name: 'roulette', method: 'totalGames' },

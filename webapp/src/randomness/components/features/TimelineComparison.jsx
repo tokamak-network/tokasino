@@ -37,7 +37,7 @@ export default function TimelineComparison() {
   const clCallbackDone = progress >= 0.66
   const clResultDone = progress >= 0.75
 
-  // Tokasino: instant at ~10%
+  // Enshrined VRF: instant at ~10%
   const tkDone = progress >= 0.15
 
   return (
@@ -70,7 +70,7 @@ export default function TimelineComparison() {
 
       <div className="tl-row">
         <div className="tl-label">
-          <span style={{ color: 'var(--neon)' }}>Tokasino VRF</span>
+          <span style={{ color: 'var(--neon)' }}>Enshrined VRF</span>
         </div>
         <div className="tl-track">
           <div className="tl-bar" style={{ width: tkDone ? '20%' : `${(progress / 0.15) * 20}%`, background: 'var(--neon)' }} />

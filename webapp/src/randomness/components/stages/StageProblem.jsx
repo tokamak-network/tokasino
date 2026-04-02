@@ -39,12 +39,12 @@ export default function StageProblem() {
       </div>
 
       <div className="d-section">
-        <div className="d-label">Chainlink VRF vs Tokasino VRF 타임라인</div>
+        <div className="d-label">Chainlink VRF vs Enshrined VRF 타임라인</div>
         <TimelineComparison />
       </div>
 
       <div className="d-section">
-        <div className="d-label">Tokasino의 해결책</div>
+        <div className="d-label">Enshrined VRF의 해결책</div>
         <div className="d-comparison">
           <div className="d-comp-box good" style={{ gridColumn: '1 / -1' }}>
             <div className="d-comp-title">VRF를 합의 레이어에 내장</div>

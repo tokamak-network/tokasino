@@ -7,7 +7,7 @@ export default function TopBar() {
   return (
     <div className="top-bar">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-        <div className="top-logo">TOKASINO</div>
+        <div className="top-logo">ENSHRINED VRF</div>
       </div>
       <div className="top-nav">
         <a href="setup.html">Setup</a>

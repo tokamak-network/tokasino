@@ -109,7 +109,7 @@ impl BeaconNode {
 /// Construct the message to sign for a given round.
 /// This is what all participants sign to produce the beacon output.
 fn round_message(round: u64) -> Vec<u8> {
-    let mut msg = b"TOKASINO-ROUND-".to_vec();
+    let mut msg = b"ENSHRINED-VRF-ROUND-".to_vec();
     msg.extend_from_slice(&round.to_be_bytes());
     msg
 }

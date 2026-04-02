@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tokasino — Sequencer Setup</title>
+<title>Enshrined VRF — Sequencer Setup</title>
 <link rel="stylesheet" href="shared/style.css">
 <style>
   html, body { height: 100%; overflow: hidden; }
@@ -153,7 +153,7 @@
 
   <div class="top-bar">
     <div style="display:flex; align-items:baseline;">
-      <div class="top-logo">TOKASINO</div>
+      <div class="top-logo">ENSHRINED VRF</div>
       <span class="top-label">Sequencer Setup</span>
     </div>
     <div style="font-family:var(--mono); font-size:0.55rem; color:var(--muted);">
@@ -208,12 +208,12 @@
           <div class="b-title">seed는 어디서 오나요? (가장 중요!)</div>
           <div class="b-body">
             프리컴파일이 받는 seed는 <span class="b-key">block.prevrandao</span>에서 옵니다.
-            이것이 Tokasino 난수의 <span class="b-key">신뢰의 근원</span>이에요.<br><br>
+            이것이 Enshrined VRF 난수의 <span class="b-key">신뢰의 근원</span>이에요.<br><br>
 
             <span style="color:var(--gold);">prevrandao란?</span><br>
             모든 이더리움 블록에는 <span class="b-key">prevrandao</span>라는 필드가 있습니다.
             원래 이더리움에서는 비콘체인의 RANDAO 믹스 값이 여기에 들어가요.
-            하지만 Tokasino에서는 이 자리에 <span class="b-key">시퀀서가 VRF로 계산한 난수</span>를 넣습니다.<br><br>
+            하지만 Enshrined VRF에서는 이 자리에 <span class="b-key">시퀀서가 VRF로 계산한 난수</span>를 넣습니다.<br><br>
 
             <span style="color:var(--gold);">VRF 난수가 만들어지는 과정:</span><br>
             <span style="color:var(--muted); font-family:var(--mono); font-size:0.55rem;">
@@ -418,11 +418,11 @@
           <div class="term-dot y"></div>
           <div class="term-dot g"></div>
         </div>
-        <span>tokasino-cl</span>
+        <span>enshrined-vrf-cl</span>
       </div>
       <div class="term-body" id="termBody">
         <div class="term-line">
-          <span class="t-msg" style="color:var(--muted);">$ tokasino-cl --mode vrf --block_time 3</span>
+          <span class="t-msg" style="color:var(--muted);">$ enshrined-vrf-cl --mode vrf --block_time 3</span>
         </div>
         <div class="term-line"><span class="t-cursor"></span></div>
       </div>

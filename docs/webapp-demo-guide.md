@@ -1,8 +1,8 @@
-# Tokasino 웹앱 & 데모 가이드
+# Enshrined VRF 웹앱 & 데모 가이드
 
 ## 1. 전체 구조 요약
 
-Tokasino는 **온체인 카지노를 위한 커스텀 블록체인**입니다.
+Enshrined VRF는 **온체인 카지노를 위한 커스텀 블록체인**입니다.
 
 핵심 문제는: 블록체인에서 공정한 난수(랜덤)를 어떻게 만들 것인가?
 
@@ -77,7 +77,7 @@ seed(prevrandao) + counter(호출마다 증가)
 
 - **VRF** = Verifiable Random Function (검증 가능한 난수 함수)
 - **BLS12-381** 암호 알고리즘으로 키쌍(비밀키 + 공개키) 생성
-- DST(Domain Separation Tag): `TOKASINO-VRF-V1`
+- DST(Domain Separation Tag): `ENSHRINED-VRF-V1`
 
 핵심 성질:
 - **결정적**: 같은 입력 → 항상 같은 출력 (시퀀서가 마음대로 바꿀 수 없음)

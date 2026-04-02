@@ -1,4 +1,4 @@
-//! Tokasino: OP Stack L2 with built-in randomness.
+//! Enshrined VRF: OP Stack L2 with built-in randomness.
 //!
 //! This binary runs an op-reth node. Randomness features (precompile, system contract)
 //! will be integrated via custom executor builder.
@@ -18,7 +18,7 @@ fn main() {
 
     if let Err(err) =
         Cli::parse_args().run(async move |builder, rollup_args: RollupArgs| {
-            info!(target: "tokasino", "Launching Tokasino OP Stack node");
+            info!(target: "enshrined-vrf", "Launching Enshrined VRF OP Stack node");
             let handle = builder
                 .node(OpNode::new(rollup_args))
                 .launch_with_debug_capabilities()

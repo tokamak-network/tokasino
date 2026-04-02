@@ -1,4 +1,4 @@
-// Tokasino Lottery — Reown AppKit + ethers.js
+// Enshrined VRF Lottery — Reown AppKit + ethers.js
 
 import {
   getReadContract, getWriteContract, getBlockNumber, getAddress,

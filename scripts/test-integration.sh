@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Integration test for Tokasino node
-# Requires: tokasino node running on localhost:8545 (HTTP RPC)
+# Integration test for Enshrined VRF node
+# Requires: enshrined-vrf node running on localhost:8545 (HTTP RPC)
 #           cast (foundry) installed
 set -euo pipefail
 
@@ -9,7 +9,7 @@ DEV_ACCOUNT="0x6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b"
 BEACON_HISTORY="0x4200000000000000000000000000000000000099"
 RANDOMNESS_PRECOMPILE="0x000000000000000000000000000000000000000b"
 
-echo "=== Tokasino Integration Test ==="
+echo "=== Enshrined VRF Integration Test ==="
 echo "RPC: $RPC_URL"
 echo ""
 

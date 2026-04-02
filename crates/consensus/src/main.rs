@@ -14,13 +14,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Tokasino Consensus Layer — drives block production via Engine API.
+/// Enshrined VRF Consensus Layer — drives block production via Engine API.
 ///
 /// Supports two modes:
 /// - `vrf`: Single sequencer VRF (default, simpler)
 /// - `drb`: Distributed Random Beacon with threshold BLS
 #[derive(Parser, Debug)]
-#[command(name = "tokasino-cl", about = "Tokasino consensus layer client")]
+#[command(name = "enshrined-vrf-cl", about = "Enshrined VRF consensus layer client")]
 struct Cli {
     /// HTTP URL of the reth Engine API (e.g. http://localhost:8551)
     #[arg(long, default_value = "http://localhost:8551")]

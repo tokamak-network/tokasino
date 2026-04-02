@@ -1,4 +1,4 @@
-// Tokasino Setup — step-by-step sequencer boot with explanations
+// Enshrined VRF Setup — step-by-step sequencer boot with explanations
 
 import { RPC_URL, CHAIN_ID, contracts } from './config.js'
 import { JsonRpcProvider, formatEther } from 'ethers'
@@ -111,7 +111,7 @@ function updateButton() {
 async function runStep_0() {
   $('setupStatus').textContent = 'Step 1a: Execution Layer'
   setStep('0', 'running')
-  log('info', 'Launching Tokasino OP Stack node')
+  log('info', 'Launching Enshrined VRF OP Stack node')
   await wait(600)
   log('info', 'Loading randomness precompile', 'addr=0x0b')
   await wait(400)
@@ -124,7 +124,7 @@ async function runStep_0() {
     const blockNum = await provider.getBlockNumber()
     log('info', 'EL node is live', `chain_id=${chainId} block=${blockNum}`)
     showData('0', [
-      ['Binary', 'tokasino (op-reth fork)', ''],
+      ['Binary', 'enshrined-vrf (op-reth fork)', ''],
       ['Precompile', '0x0b (ChaCha20 CSPRNG)', 'neon'],
       ['Chain ID', chainId.toString(), 'gold'],
       ['RPC', RPC_URL, 'blue'],
@@ -133,7 +133,7 @@ async function runStep_0() {
   } catch {
     log('warn', 'EL not reachable, simulating...', `rpc=${RPC_URL}`)
     showData('0', [
-      ['Binary', 'tokasino (op-reth fork)', ''],
+      ['Binary', 'enshrined-vrf (op-reth fork)', ''],
       ['Precompile', '0x0b (ChaCha20 CSPRNG)', 'neon'],
       ['Chain ID', CHAIN_ID.toString(), 'gold'],
       ['Status', 'simulated', 'gold'],
@@ -193,11 +193,11 @@ async function runStep_1() {
   await wait(200)
   log('info', 'Key saved', 'path=vrf_key.bin')
   await wait(200)
-  log('info', 'DST: TOKASINO-VRF-V1')
+  log('info', 'DST: ENSHRINED-VRF-V1')
 
   showData('1', [
     ['Algorithm', 'BLS12-381 min-sig', ''],
-    ['DST', 'TOKASINO-VRF-V1', 'gold'],
+    ['DST', 'ENSHRINED-VRF-V1', 'gold'],
     ['Public Key', sh(fakepk, 16), 'neon'],
     ['Key File', 'vrf_key.bin', 'blue'],
     ['Property', 'Deterministic + Unpredictable + Verifiable', ''],
@@ -255,7 +255,7 @@ async function runStep_4() {
   setStep('4', 'running')
   log('info', 'Computing first VRF output')
   await wait(300)
-  log('info', 'VRF.prove(genesis_hash || 1)', 'dst=TOKASINO-VRF-V1')
+  log('info', 'VRF.prove(genesis_hash || 1)', 'dst=ENSHRINED-VRF-V1')
   await wait(400)
 
   let block1Randao = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
@@ -280,7 +280,7 @@ async function runStep_4() {
 
   showData('4', [
     ['VRF Input', sh(genesisHash, 8) + ' || 1', 'blue'],
-    ['BLS Sign', 'sign(sk, input, "TOKASINO-VRF-V1")', ''],
+    ['BLS Sign', 'sign(sk, input, "ENSHRINED-VRF-V1")', ''],
     ['VRF Output', sh(block1Randao, 16), 'gold'],
     ['Block #1', sh(block1Hash, 16), 'neon'],
     ['Flow', 'forkchoiceUpdatedV3 -> getPayloadV3 -> newPayloadV3', ''],

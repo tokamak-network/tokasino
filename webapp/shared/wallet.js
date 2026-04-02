@@ -1,10 +1,10 @@
-// Tokasino Wallet & RPC Utilities
+// Enshrined VRF Wallet & RPC Utilities
 
 let _account = null;
 let _onAccountChange = null;
 
 async function rpc(method, params = []) {
-  const res = await fetch(TOKASINO.RPC_URL, {
+  const res = await fetch(ENSHRINED_VRF.RPC_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', method, params, id: Date.now() }),
@@ -31,7 +31,7 @@ async function connectWallet() {
   }
 
   // Try to switch chain (non-fatal — don't block wallet connection)
-  const chainHex = '0x' + TOKASINO.CHAIN_ID.toString(16);
+  const chainHex = '0x' + ENSHRINED_VRF.CHAIN_ID.toString(16);
   try {
     await window.ethereum.request({
       method: 'wallet_switchEthereumChain',
@@ -44,8 +44,8 @@ async function connectWallet() {
           method: 'wallet_addEthereumChain',
           params: [{
             chainId: chainHex,
-            chainName: TOKASINO.CHAIN_NAME,
-            rpcUrls: [TOKASINO.RPC_URL],
+            chainName: ENSHRINED_VRF.CHAIN_NAME,
+            rpcUrls: [ENSHRINED_VRF.RPC_URL],
             nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
           }],
         });

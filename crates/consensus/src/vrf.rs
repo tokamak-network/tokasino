@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 /// Domain separation tag for BLS signatures used as VRF.
-const DST: &[u8] = b"TOKASINO-VRF-V1";
+const DST: &[u8] = b"ENSHRINED-VRF-V1";
 
 /// A VRF key pair backed by BLS min-sig (BLS12-381).
 pub struct VrfKeyPair {

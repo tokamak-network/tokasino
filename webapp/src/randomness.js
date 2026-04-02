@@ -1,4 +1,4 @@
-// Tokasino Randomness Deep Dive — interactive pipeline explainer with real values
+// Enshrined VRF Randomness Deep Dive — interactive pipeline explainer with real values
 
 import { getReadProvider, getBlockNumber, formatEther } from './appkit.js'
 import { CHAIN_ID, RPC_URL, contracts } from './config.js'
@@ -125,7 +125,7 @@ const stages = {
       </div>
 
       <div class="d-section">
-        <div class="d-label">Tokasino의 해결책</div>
+        <div class="d-label">Enshrined VRF의 해결책</div>
         <div class="d-comparison">
           <div class="d-comp-box good" style="grid-column: 1 / -1;">
             <div class="d-comp-title">VRF를 합의 레이어에 내장</div>
@@ -197,7 +197,7 @@ const stages = {
         <div class="d-label">BLS12-381 서명 과정</div>
         <div class="d-code">
 <span class="cm">// 시퀀서가 실행하는 Rust 코드 (vrf.rs)</span>
-<span class="kw">const</span> DST = <span class="str">"TOKASINO-VRF-V1"</span>;
+<span class="kw">const</span> DST = <span class="str">"ENSHRINED-VRF-V1"</span>;
 
 input = <span class="str">${sh(traced.parentHash, 6)}</span> || <span class="num">${traced.blockNumber}</span>
 

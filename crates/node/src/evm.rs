@@ -1,4 +1,4 @@
-//! Tokasino randomness precompile for OP Stack.
+//! Enshrined VRF randomness precompile for OP Stack.
 //!
 //! Provides a ChaCha20 CSPRNG precompile at address 0x0b and constants
 //! for the RandomBeaconHistory system contract.
@@ -50,13 +50,13 @@ fn randomness_precompile(input: &[u8], gas_limit: u64) -> PrecompileResult {
     Ok(PrecompileOutput::new(RANDOMNESS_GAS, Bytes::from(output.to_vec())))
 }
 
-/// Returns OP Stack precompiles extended with the Tokasino randomness precompile.
-pub fn tokasino_precompiles() -> &'static Precompiles {
+/// Returns OP Stack precompiles extended with the Enshrined VRF randomness precompile.
+pub fn enshrined_vrf_precompiles() -> &'static Precompiles {
     static INSTANCE: OnceLock<Precompiles> = OnceLock::new();
     INSTANCE.get_or_init(|| {
         let mut precompiles = Precompiles::prague().clone();
         precompiles.extend([Precompile::new(
-            PrecompileId::custom("tokasino-randomness"),
+            PrecompileId::custom("enshrined-vrf-randomness"),
             RANDOMNESS_PRECOMPILE_ADDRESS,
             randomness_precompile,
         )]);

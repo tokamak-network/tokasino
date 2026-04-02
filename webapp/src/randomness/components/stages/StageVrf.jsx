@@ -34,7 +34,7 @@ export default function StageVrf() {
         <div className="d-label">BLS12-381 서명 과정</div>
         <div className="d-code">
           <span className="cm">// 시퀀서가 실행하는 Rust 코드 (vrf.rs)</span>{'\n'}
-          <span className="kw">const</span> DST = <span className="str">"TOKASINO-VRF-V1"</span>;{'\n\n'}
+          <span className="kw">const</span> DST = <span className="str">"ENSHRINED-VRF-V1"</span>;{'\n\n'}
           input = <span className="str">{sh(traced.parentHash, 6)}</span> || <span className="num">{traced.blockNumber}</span>{'\n\n'}
           signature = BLS.<span className="fn">sign</span>(secret_key, input, DST){'\n'}
           <span className="cm">// signature = 96바이트 BLS 서명</span>{'\n'}

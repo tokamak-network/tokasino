@@ -1,10 +1,10 @@
-// Tokasino dApp Configuration
+// Enshrined VRF dApp Configuration
 // Contract addresses are set after deployment via deploy-contracts.sh
 
-const TOKASINO = {
+const ENSHRINED_VRF = {
   CHAIN_ID: 7777,
   RPC_URL: 'http://localhost:8545',
-  CHAIN_NAME: 'Tokasino L2',
+  CHAIN_NAME: 'Enshrined VRF L2',
 
   // Contract addresses (updated by deploy script)
   contracts: {

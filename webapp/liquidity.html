@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPS CHAIN — Liquidity Pool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Silkscreen&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0A0A1A;
+  --bg-secondary: #12122A;
+  --bg-surface: #1A1A3E;
+  --neon-cyan: #00F0FF;
+  --neon-pink: #FF2E97;
+  --neon-yellow: #FFE600;
+  --neon-green: #39FF14;
+  --neon-purple: #B026FF;
+  --text-primary: #EAEAEA;
+  --text-secondary: #7A7A9E;
+  --text-muted: #4A4A6A;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'VT323', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.scan-sweep {
+  position: fixed;
+  left: 0; right: 0;
+  height: 2px;
+  background: rgba(0,240,255,0.08);
+  z-index: 9998;
+  animation: scanSweep 3s linear infinite;
+  pointer-events: none;
+}
+@keyframes scanSweep { 0% { top: -2px; } 100% { top: 100%; } }
+
+/* TOP BAR */
+.top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid rgba(0,240,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 100;
+}
+.top-bar .logo {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 7px #00F0FF, 0 0 10px #00F0FF, 0 0 21px #00F0FF;
+  text-decoration: none;
+}
+.top-bar .back-link {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-right: 16px;
+}
+.top-bar .back-link:hover { color: var(--neon-cyan); }
+.top-bar-left { display: flex; align-items: center; }
+
+/* MAIN */
+.main-content {
+  margin-top: 56px;
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 32px 24px 48px;
+  position: relative;
+  z-index: 2;
+}
+
+.page-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 20px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 7px #00F0FF, 0 0 15px #00F0FF;
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+/* POOL STATS ROW */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0,240,255,0.1);
+  border-radius: 2px;
+  padding: 16px;
+  text-align: center;
+}
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: bold;
+}
+.stat-card .stat-value.cyan { color: var(--neon-cyan); }
+.stat-card .stat-value.green { color: var(--neon-green); }
+.stat-card .stat-value.yellow { color: var(--neon-yellow); }
+.stat-card .stat-value.primary { color: var(--text-primary); }
+
+/* Utilization bar */
+.util-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-surface);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.util-bar-fill {
+  height: 100%;
+  background: var(--neon-green);
+  border-radius: 2px;
+  transition: width 0.5s ease-out;
+}
+
+/* TWO-COLUMN LAYOUT */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* PANEL */
+.panel {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0,240,255,0.1);
+  border-radius: 2px;
+  padding: 24px;
+}
+.panel-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(0,240,255,0.1);
+}
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  padding: 10px 0;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: var(--text-secondary); }
+.tab-btn.active {
+  color: var(--neon-cyan);
+  border-bottom-color: var(--neon-cyan);
+}
+
+/* FORM ELEMENTS */
+.field-group {
+  margin-bottom: 16px;
+}
+.field-label {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.field-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-input {
+  flex: 1;
+  height: 48px;
+  background: var(--bg-surface);
+  border: 1px solid var(--text-muted);
+  color: var(--text-primary);
+  font-family: 'VT323', monospace;
+  font-size: 24px;
+  text-align: right;
+  padding: 0 12px;
+  border-radius: 2px;
+  transition: border-color 0.15s;
+}
+.field-input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 5px rgba(0,240,255,0.3);
+}
+
+.max-btn {
+  height: 48px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+.max-btn:hover {
+  background: rgba(0,240,255,0.1);
+}
+
+.info-line {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+.info-line .value { color: var(--text-primary); }
+
+.action-btn {
+  width: 100%;
+  height: 52px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 16px;
+}
+.action-btn.deposit {
+  background: var(--neon-cyan);
+  color: var(--bg-primary);
+  box-shadow: 0 0 5px #00F0FF, 0 0 15px rgba(0,240,255,0.3);
+}
+.action-btn.deposit:hover {
+  box-shadow: 0 0 10px #00F0FF, 0 0 30px rgba(0,240,255,0.5);
+  transform: scale(1.02);
+}
+.action-btn.withdraw {
+  background: var(--neon-pink);
+  color: white;
+  box-shadow: 0 0 5px #FF2E97, 0 0 15px rgba(255,46,151,0.3);
+}
+.action-btn.withdraw:hover {
+  box-shadow: 0 0 10px #FF2E97, 0 0 30px rgba(255,46,151,0.5);
+  transform: scale(1.02);
+}
+.action-btn:active { transform: scale(0.95); }
+
+/* PERCENT PRESETS */
+.pct-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.pct-btn {
+  flex: 1;
+  height: 36px;
+  background: transparent;
+  border: 1px solid rgba(0,240,255,0.2);
+  color: var(--text-secondary);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+.pct-btn:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+.pct-btn.active {
+  background: rgba(0,240,255,0.1);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+/* MY POSITION */
+.position-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.position-item {
+  padding: 12px;
+  background: var(--bg-surface);
+  border-radius: 2px;
+}
+.position-item .pos-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.position-item .pos-value {
+  font-size: 24px;
+}
+
+/* ACTIVITY LOG */
+.activity-section {
+  margin-top: 32px;
+}
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.activity-table th {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0,240,255,0.1);
+}
+.activity-table td {
+  font-size: 18px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.activity-table tr:hover td { background: rgba(0,240,255,0.03); }
+
+.type-deposit { color: var(--neon-green); }
+.type-withdraw { color: var(--neon-pink); }
+.type-payout { color: var(--neon-yellow); }
+.type-loss { color: var(--neon-cyan); }
+
+/* ODDS TABLES */
+.odds-section {
+  margin-top: 32px;
+}
+.odds-section .two-col {
+  margin-bottom: 0;
+}
+.odds-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.odds-table th {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0,240,255,0.15);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.odds-table td {
+  font-size: 20px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.odds-table tr:hover td { background: rgba(0,240,255,0.03); }
+.odds-table .row-total td {
+  border-top: 1px solid rgba(0,240,255,0.15);
+  color: var(--neon-cyan);
+  font-weight: bold;
+}
+.odds-table .mult { font-family: 'Press Start 2P', monospace; font-size: 13px; }
+.mult-1  { color: var(--text-secondary); }
+.mult-2  { color: var(--neon-cyan); }
+.mult-4  { color: var(--neon-purple); }
+.mult-7  { color: var(--neon-pink); }
+.mult-20 { color: var(--neon-yellow); text-shadow: 0 0 6px rgba(255,230,0,0.5); }
+
+.edge-highlight {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 24px;
+  color: var(--neon-green);
+  text-shadow: 0 0 7px rgba(57,255,20,0.5);
+  text-align: center;
+  padding: 20px;
+  margin-top: 16px;
+  background: rgba(57,255,20,0.05);
+  border: 1px solid rgba(57,255,20,0.2);
+  border-radius: 2px;
+}
+.edge-highlight .edge-label {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* TOAST */
+.toast-container {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  width: 320px;
+  background: var(--bg-surface);
+  border-radius: 2px;
+  padding: 12px 16px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: toastIn 0.3s ease-out;
+  position: relative;
+}
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 2px 0 0 2px; }
+.toast.success .bar { background: var(--neon-green); }
+.toast.info .bar { background: var(--neon-cyan); }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .top-bar .logo { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .scan-sweep { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="scan-sweep"></div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-bar-left">
+    <a href="rps.html" class="back-link">&larr; BACK</a>
+    <a href="rps.html" class="logo">RPS CHAIN</a>
+  </div>
+  <appkit-button size="sm"></appkit-button>
+</div>
+
+<!-- MAIN -->
+<div class="main-content">
+
+  <div class="page-title">LP POOL</div>
+
+  <!-- POOL STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">TVL</div>
+      <div class="stat-value cyan" id="tvl">12.50</div>
+      <div style="font-size:14px; color:var(--text-muted)">ETH</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">UTILIZATION</div>
+      <div class="stat-value green" id="utilPct">23%</div>
+      <div class="util-bar"><div class="util-bar-fill" id="utilBar" style="width:23%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">24H YIELD</div>
+      <div class="stat-value green" id="yieldPct">+0.42%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">24H GAMES</div>
+      <div class="stat-value primary" id="gamesToday">1,234</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">24H HOUSE P&amp;L</div>
+      <div class="stat-value yellow" id="houseProfit">+0.85</div>
+      <div style="font-size:14px; color:var(--text-muted)">ETH</div>
+    </div>
+  </div>
+
+  <!-- TWO COLUMNS: Pool Summary + Deposit/Withdraw -->
+  <div class="two-col">
+
+    <!-- LEFT: My Position -->
+    <div class="panel">
+      <div class="panel-title">MY POSITION</div>
+      <div class="position-grid">
+        <div class="position-item">
+          <div class="pos-label">DEPOSITED</div>
+          <div class="pos-value cyan" id="myDeposit">0.00 ETH</div>
+        </div>
+        <div class="position-item">
+          <div class="pos-label">CURRENT VALUE</div>
+          <div class="pos-value green" id="myValue">0.00 ETH</div>
+        </div>
+        <div class="position-item">
+          <div class="pos-label">EARNINGS</div>
+          <div class="pos-value yellow" id="myEarnings">+0.00 ETH</div>
+        </div>
+        <div class="position-item">
+          <div class="pos-label">POOL SHARE</div>
+          <div class="pos-value primary" id="myShare">0.00%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Deposit / Withdraw -->
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="deposit">DEPOSIT</button>
+        <button class="tab-btn" data-tab="withdraw">WITHDRAW</button>
+      </div>
+
+      <!-- Deposit Tab -->
+      <div id="depositTab">
+        <div class="field-group">
+          <div class="field-label">AMOUNT (ETH)</div>
+          <div class="field-row">
+            <input class="field-input" id="depositAmount" type="text" value="0.1" inputmode="decimal">
+            <button class="max-btn" id="depositMax">MAX</button>
+          </div>
+        </div>
+        <div class="info-line">
+          <span>You will receive</span>
+          <span class="value" id="depositLpOut">~10.00 LP</span>
+        </div>
+        <div class="info-line">
+          <span>Pool share after</span>
+          <span class="value" id="depositShareAfter">~0.80%</span>
+        </div>
+        <button class="action-btn deposit" id="depositBtn">DEPOSIT</button>
+      </div>
+
+      <!-- Withdraw Tab -->
+      <div id="withdrawTab" style="display:none;">
+        <div class="field-group">
+          <div class="field-label">LP TOKENS</div>
+          <div class="field-row">
+            <input class="field-input" id="withdrawAmount" type="text" value="0" inputmode="decimal">
+            <button class="max-btn" id="withdrawMax">MAX</button>
+          </div>
+        </div>
+        <div class="pct-row">
+          <button class="pct-btn" data-pct="25">25%</button>
+          <button class="pct-btn" data-pct="50">50%</button>
+          <button class="pct-btn" data-pct="75">75%</button>
+          <button class="pct-btn active" data-pct="100">100%</button>
+        </div>
+        <div class="info-line">
+          <span>You will receive</span>
+          <span class="value" id="withdrawEthOut">~0.00 ETH</span>
+        </div>
+        <button class="action-btn withdraw" id="withdrawBtn">WITHDRAW</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ODDS & HOUSE EDGE -->
+  <div class="odds-section">
+    <div class="two-col">
+
+      <!-- Roulette Probability Table -->
+      <div class="panel">
+        <div class="panel-title">ROULETTE PROBABILITY</div>
+        <table class="odds-table">
+          <thead>
+            <tr>
+              <th>MULT</th>
+              <th>ROULETTE %</th>
+              <th>TRUE WIN %</th>
+              <th>EV CONTRIB</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mult mult-1">&times;1</td>
+              <td>73%</td>
+              <td>36.5%</td>
+              <td>0.73</td>
+            </tr>
+            <tr>
+              <td class="mult mult-2">&times;2</td>
+              <td>13%</td>
+              <td>6.5%</td>
+              <td>0.26</td>
+            </tr>
+            <tr>
+              <td class="mult mult-4">&times;4</td>
+              <td>8%</td>
+              <td>4.0%</td>
+              <td>0.32</td>
+            </tr>
+            <tr>
+              <td class="mult mult-7">&times;7</td>
+              <td>5%</td>
+              <td>2.5%</td>
+              <td>0.35</td>
+            </tr>
+            <tr>
+              <td class="mult mult-20">&times;20</td>
+              <td>1%</td>
+              <td>0.5%</td>
+              <td>0.20</td>
+            </tr>
+            <tr class="row-total">
+              <td>TOTAL</td>
+              <td>100%</td>
+              <td>50.0%</td>
+              <td>1.86</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Advantage for LP -->
+      <div class="panel">
+        <div class="panel-title">ADVANTAGE FOR LP</div>
+        <table class="odds-table">
+          <thead>
+            <tr>
+              <th>METRIC</th>
+              <th>FORMULA</th>
+              <th>RESULT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Roulette EV</td>
+              <td style="font-size:14px; color:var(--text-secondary)">(0.73&times;1)+(0.13&times;2)+(0.08&times;4)+(0.05&times;7)+(0.01&times;20)</td>
+              <td style="color:var(--neon-cyan)">1.86</td>
+            </tr>
+            <tr>
+              <td>Player EV</td>
+              <td style="font-size:14px; color:var(--text-secondary)">Win rate (50%) &times; 1.86</td>
+              <td style="color:var(--neon-yellow)">0.93</td>
+            </tr>
+            <tr class="row-total">
+              <td>House Edge</td>
+              <td style="font-size:14px;">1 &minus; 0.93</td>
+              <td style="color:var(--neon-green); font-family:'Press Start 2P',monospace; font-size:16px;">7%</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="edge-highlight">
+          <span class="edge-label">GUARANTEED HOUSE EDGE</span>
+          7.0%
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ACTIVITY LOG -->
+  <div class="activity-section">
+    <div class="panel">
+      <div class="panel-title">RECENT POOL ACTIVITY</div>
+      <table class="activity-table">
+        <thead>
+          <tr>
+            <th>TIME</th>
+            <th>TYPE</th>
+            <th>AMOUNT</th>
+            <th>ADDRESS</th>
+          </tr>
+        </thead>
+        <tbody id="activityBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script type="module" src="/src/liquidity.js"></script>
+</body>
+</html>

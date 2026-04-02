@@ -9,12 +9,12 @@ rust-version = "1.88"
 
 [workspace.dependencies]
 # op-reth (local path — clone op-rs/op-reth next to this repo)
-reth-optimism-node = { path = "../tokasino-op-reth/crates/optimism/node" }
-reth-optimism-evm = { path = "../tokasino-op-reth/crates/optimism/evm" }
-reth-optimism-chainspec = { path = "../tokasino-op-reth/crates/optimism/chainspec" }
-reth-optimism-primitives = { path = "../tokasino-op-reth/crates/optimism/primitives" }
-reth-optimism-cli = { path = "../tokasino-op-reth/crates/optimism/cli" }
-reth-optimism-forks = { path = "../tokasino-op-reth/crates/optimism/hardforks" }
+reth-optimism-node = { path = "../enshrined-vrf-op-reth/crates/optimism/node" }
+reth-optimism-evm = { path = "../enshrined-vrf-op-reth/crates/optimism/evm" }
+reth-optimism-chainspec = { path = "../enshrined-vrf-op-reth/crates/optimism/chainspec" }
+reth-optimism-primitives = { path = "../enshrined-vrf-op-reth/crates/optimism/primitives" }
+reth-optimism-cli = { path = "../enshrined-vrf-op-reth/crates/optimism/cli" }
+reth-optimism-forks = { path = "../enshrined-vrf-op-reth/crates/optimism/hardforks" }
 
 # reth core (same tag as op-reth uses)
 reth-node-builder = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.10.2" }

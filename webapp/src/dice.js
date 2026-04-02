@@ -1,4 +1,4 @@
-// Tokasino — Instant Dice (Reown AppKit + ethers.js)
+// Enshrined VRF — Instant Dice (Reown AppKit + ethers.js)
 
 import {
   getReadContract, getWriteContract, getBlockNumber, getAddress,

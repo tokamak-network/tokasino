@@ -12,7 +12,7 @@ use eyre::{ensure, eyre, Result};
 use crate::dkg::DkgShare;
 
 /// Domain separation tag for beacon signatures.
-const DST: &[u8] = b"TOKASINO-BEACON-V1";
+const DST: &[u8] = b"ENSHRINED-VRF-BEACON-V1";
 
 /// A partial BLS signature from one participant.
 #[derive(Clone)]

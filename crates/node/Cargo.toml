@@ -1,11 +1,11 @@
 [package]
-name = "tokasino-node"
+name = "enshrined-vrf-node"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
 [[bin]]
-name = "tokasino"
+name = "enshrined-vrf"
 path = "src/main.rs"
 
 [dependencies]

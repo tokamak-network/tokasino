@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Tokasino Contract Deployment Script
+# Enshrined VRF Contract Deployment Script
 # Deploys all game contracts and updates webapp config with deployed addresses.
 #
 # Usage:
@@ -15,7 +15,7 @@ PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 CONTRACTS_DIR="$(cd "$(dirname "$0")/../crates/contracts" && pwd)"
 WEBAPP_CONFIG="$(cd "$(dirname "$0")/../webapp/shared" && pwd)/config.js"
 
-echo "=== Tokasino Contract Deployment ==="
+echo "=== Enshrined VRF Contract Deployment ==="
 echo "RPC: $RPC_URL"
 echo ""
 

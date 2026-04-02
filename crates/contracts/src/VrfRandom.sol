@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/// @title TokasinoRandom
-/// @notice On-chain randomness library for the Tokasino L2.
+/// @title VrfRandom
+/// @notice On-chain randomness library for the Enshrined VRF L2.
 ///         Uses block.prevrandao which is backed by VRF/DRB from the CL.
 /// @dev    Each call within the same tx gets a unique value via nonce mixing.
 ///         For gambling/high-value use cases, use the commit-reveal pattern
 ///         with RandomBeaconHistory instead.
-library TokasinoRandom {
+library VrfRandom {
     /// @notice Returns a pseudo-random uint256 unique to this call context.
     /// @param salt Additional entropy (e.g. user address, game ID, counter)
     function random(uint256 salt) internal view returns (uint256) {

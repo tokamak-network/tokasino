@@ -1,4 +1,4 @@
-// Tokasino — Coin Flip game module (Reown AppKit + ethers.js)
+// Enshrined VRF — Coin Flip game module (Reown AppKit + ethers.js)
 
 import {
   getReadContract, getWriteContract, getBlockNumber, getAddress,

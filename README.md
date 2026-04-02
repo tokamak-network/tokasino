@@ -1,16 +1,110 @@
-# Tokasino
+# Enshrined VRF
 
-Randomness-native OP Stack L2 for on-chain casino and gambling dApps.
+Enshrined VRF for OP Stack L2 — protocol-level verifiable randomness without external oracles.
 
-## Vision
+## Background
 
-Existing EVM chains lack secure built-in randomness. Ethereum's `PREVRANDAO` is biasable by validators, and oracle solutions (Chainlink VRF) add cost and latency per request. This makes building trustless on-chain casinos impractical.
+### What is VRF?
 
-Tokasino is an OP Stack L2 that provides **protocol-level, verifiable randomness** — free for dApp developers, with no external oracle dependency.
+A **Verifiable Random Function (VRF)** takes a secret key and an input, and produces a random number together with a cryptographic proof. Anyone with the corresponding public key can verify the output, but without the secret key, neither the output nor future values can be predicted or manipulated.
+
+VRF is essential for blockchains because it provides:
+
+- **Bias resistance** — no party can manipulate the result
+- **Public verifiability** — anyone can check correctness on-chain
+- **Pseudorandomness** — output is indistinguishable from true randomness
+
+Most blockchain projects (Aptos Roll, Flow, Algorand, DFINITY) use multiple validators or nodes to generate randomness in a distributed fashion.
+
+### The Problem with Oracle-based VRF
+
+Chainlink VRF is the industry standard, but it introduces significant overhead:
+
+1. The dApp sends a randomness request
+2. The request is recorded on L1
+3. The Chainlink oracle detects the request
+4. The oracle generates a VRF output off-chain
+5. The result is delivered back via callback on L2
+
+This round-trip takes **~30 seconds** and incurs a **per-request fee**. For high-frequency applications like on-chain games and casinos, this latency and cost are prohibitive.
+
+### Enshrined VRF — The Solution
+
+Enshrined VRF embeds the randomness generator directly inside the L2 sequencer engine, rather than relying on external oracles.
+
+- **Zero latency** — VRF is computed in Go during block production (~0.1ms)
+- **Zero cost** — no oracle fees; randomness is a protocol primitive
+- **EVM-native** — accessible via a precompile at a fixed address
+
+#### How It Works
+
+When the sequencer builds a new block:
+
+1. It retrieves the **L1 RANDAO** value from the OP Stack derivation pipeline — an external entropy source the sequencer cannot control
+2. It combines the sequencer's **secret key**, the **L1 RANDAO**, and the **L2 block number** to form a seed
+3. It runs the **ECVRF algorithm** on this seed, producing:
+   - **Beta (random value)** — a 32-byte random number for dApps to consume
+   - **Pi (proof)** — a mathematical proof that the value was honestly generated with the sequencer's key
+
+```
+L1 Beacon ──(RANDAO)──→ ┌────────────────────────┐
+                         │  Sequencer Engine       │
+L2 Block Number ────────→│                        │──→ Beta (random value)
+                         │  ECVRF(sk, seed)       │──→ Pi   (proof)
+Sequencer Secret Key ───→└────────────────────────┘
+```
+
+### Limitation: Weak Unpredictability
+
+Since the sequencer holds the secret key, Enshrined VRF provides **"weak unpredictability"**:
+
+| Concern | Description |
+|---------|-------------|
+| **Predictability** | The sequencer knows the random value before anyone else |
+| **Liveness** | The sequencer can withhold blocks to avoid unfavorable outcomes |
+| **Centralization** | A single entity controls randomness generation |
+| **Collusion** | Risk of sequencer–user collusion or sequencer acting as a player |
+
+This is acceptable for many use cases (NFT mints, loot drops, matchmaking) but insufficient for trustless gambling where the house must be provably fair.
+
+## Overcoming Weak Unpredictability
+
+### DRB (Distributed Random Beacon) — Commit-Reveal
+
+To eliminate sequencer trust, we deploy a **DRB Commit-Reveal** contract on the L2. Multiple independent operators participate in each round:
+
+```
+[Operator A] ──commit(hash)──→ ┌─────────────────────┐
+[Operator B] ──commit(hash)──→ │  DRB Commit-Reveal   │
+[Operator C] ──commit(hash)──→ │  Contract (L2)       │
+                               └──────────┬──────────┘
+                                          │ reveal phase
+[Operator A] ──reveal(secret)─→           │
+[Operator B] ──reveal(secret)─→           │
+[Operator C] ──reveal(secret)─→           │
+                                          ▼
+                               finalized randomness = hash(XOR of all secrets)
+                                          │
+                    Sequencer (CL) ←──────┘
+                          │
+             VRF input = parent_hash + block_number + drb_seed
+                          │
+                    prev_randao → RandomBeaconHistory
+```
+
+**Security guarantees:**
+
+- **N-of-N reveal** — all committers must reveal; otherwise the round expires
+- **1-of-N unpredictability** — as long as one operator keeps their secret private until reveal, the final randomness is unpredictable
+- **Front-run resistant** — `commitment = keccak256(secret || msg.sender)`, binding the secret to the operator
+
+### Threshold BLS Beacon (Future)
+
+The ultimate solution is a distributed key generation (DKG) scheme where no single party holds the full secret key. Using Threshold BLS signatures, a quorum of validators collectively produce each random beacon value.
 
 ## Architecture
 
-Tokasino is a fork of [op-reth](https://github.com/op-rs/op-reth) (the official Rust OP Stack execution client) with randomness features added to the EVM layer. It runs as a standard OP Stack chain with Go op-node, op-batcher, and op-proposer.
+This project is built on the OP Stack, forking [op-reth](https://github.com/op-rs/op-reth) (the official Rust OP Stack execution client).
 
 ```
 ┌────────────────────────────────────────┐
@@ -24,7 +118,7 @@ Tokasino is a fork of [op-reth](https://github.com/op-rs/op-reth) (the official 
                   │ prev_randao (VRF-overridden in EL)
                   ▼
 ┌────────────────────────────────────────────────┐
-│  op-reth fork (Tokasino EL)                    │
+│  op-reth fork (Enshrined VRF EL)               │
 │                                                │
 │  ┌──────────────────────────────────────────┐  │
 │  │ PREVRANDAO opcode (block.prevrandao)     │  │
@@ -48,29 +142,9 @@ Tokasino is a fork of [op-reth](https://github.com/op-rs/op-reth) (the official 
 └────────────────────────────────────────────────┘
 ```
 
-### Why OP Stack?
+## Solidity Interfaces
 
-| Feature | Pure reth | op-reth (OP Stack) |
-|---------|-----------|-------------------|
-| L1 ↔ L2 bridge | None | Built-in |
-| L1 settlement | None | Built-in |
-| L2 fee model | L1 pricing | L1 fee + L2 fee split |
-| Sequencer | Custom CL needed | op-node (production) |
-| Fault proofs | None | Cannon / kona-client |
-| Ecosystem | None | Superchain compatible |
-
-## Randomness Features
-
-### How It Works
-
-1. The OP Stack sequencer provides `prev_randao` via Engine API
-2. The EL overrides this with a VRF-derived value in the payload builder
-3. Each block gets a verifiable, deterministic random seed
-4. Smart contracts access randomness via precompile or system contract
-
-### Solidity Interfaces
-
-#### 1. `block.prevrandao` (Existing EVM Opcode)
+### 1. `block.prevrandao` (Existing EVM Opcode)
 
 Direct beacon output per block. Zero gas overhead.
 
@@ -78,7 +152,7 @@ Direct beacon output per block. Zero gas overhead.
 uint256 rand = block.prevrandao;
 ```
 
-#### 2. Randomness Precompile (Immediate, Revertible)
+### 2. Randomness Precompile (Immediate, Revertible)
 
 Per-transaction CSPRNG backed by ChaCha20, seeded from the beacon.
 
@@ -94,7 +168,7 @@ uint256 rand = RANDOM.getRandomUint256();
 Suitable for: GameFi loot drops, NFT minting, random matchmaking.
 Not suitable for gambling — users can revert unfavorable outcomes.
 
-#### 3. RandomBeaconHistory (Commit-Reveal, Non-Revertible)
+### 3. RandomBeaconHistory (Commit-Reveal, Non-Revertible)
 
 System contract for trustless gambling via commit-reveal pattern.
 
@@ -107,76 +181,60 @@ interface IRandomBeaconHistory {
 // Phase 2: resolveBet() — fetch finalized randomness, determine outcome
 ```
 
-## DRB (Distributed Random Beacon) Integration
-
-Tokasino integrates an on-chain **Commit-Reveal** protocol to eliminate sequencer trust dependency in randomness generation.
-
-### Problem
-
-In Phase 1, the sequencer holds the VRF key and can predict or bias randomness. A single point of trust remains.
-
-### Solution
-
-Deploy a DRB Commit-Reveal contract on the Tokasino L2 itself. Multiple independent operators participate in each round:
-
-```
-[Operator A] ──commit(hash)──→ ┌─────────────────────┐
-[Operator B] ──commit(hash)──→ │  DRB Commit-Reveal   │
-[Operator C] ──commit(hash)──→ │  Contract (L2)       │
-                               └──────────┬──────────┘
-                                          │ reveal phase
-[Operator A] ──reveal(secret)─→           │
-[Operator B] ──reveal(secret)─→           │
-[Operator C] ──reveal(secret)─→           │
-                                          ▼
-                               finalized randomness = hash(XOR of all secrets)
-                                          │
-                    Sequencer (CL) ←──────┘
-                          │
-             VRF input = parent_hash + block_number + drb_seed
-                          │
-                    prev_randao → RandomBeaconHistory
-```
-
-### Security Guarantee
-
-- **N-of-N reveal**: All committers must reveal; otherwise the round expires
-- **1-of-N unpredictability**: As long as one operator keeps their secret private until reveal, the final randomness is unpredictable
-- **Front-run resistant**: Commitment = `keccak256(secret || msg.sender)`, binding the secret to the operator
-
-### Contract: `DRBCommitReveal.sol`
+### 4. DRB Commit-Reveal
 
 ```solidity
-// Consume DRB randomness in your dApp
 IDRBCommitReveal drb = IDRBCommitReveal(DRB_ADDRESS);
 bytes32 rand = drb.getRoundRandomness(drb.latestFinalizedRound());
 ```
 
-Key parameters:
-- `commitPhaseDuration` — blocks for commit phase
-- `revealPhaseDuration` — blocks for reveal phase
-- `MIN_OPERATORS` — minimum 2 operators per round
+## Prior Art & Comparison
 
-### Integration Roadmap
+| Project | Mechanism | Latency | Trust Model | EVM |
+|---------|-----------|---------|-------------|-----|
+| **Chainlink VRF** | Off-chain oracle VRF | ~30s + fee per request | Trust oracle network | Yes |
+| **Ethereum PREVRANDAO** | Validator RANDAO mix | 1 block | Biasable by validators | Yes |
+| **SKALE** | Threshold BLS precompile | 1 block | N-of-M threshold | Yes |
+| **Oasis Sapphire** | VRF + TEE precompile | 1 block | Trust TEE hardware | Yes |
+| **Flow** | Threshold BLS beacon | 1 block | Distributed validators | Partial |
+| **Sui** | Threshold DKG/BLS | 1 block | Consensus-parallel | No |
+| **Aptos** | Weighted VRF (wVUF) | Instant | Weighted validator set | No |
+| **Algorand** | Sortition + VRF | 1 block | Cryptographic sortition | No |
+| **DFINITY (ICP)** | Threshold BLS (chain-key) | 1 block | Subnet consensus | No |
+| **RISE Chain** | Enshrined ECVRF in sequencer | ~0.1ms | Sequencer (weak unpredictability) | Yes |
+| **Enshrined VRF (this)** | Enshrined ECVRF + DRB | ~0.1ms | 1-of-N honest operator | Yes |
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 1 | DRB Commit-Reveal smart contract | Done |
-| 2 | CL modification: mix DRB seed into VRF input | Planned |
-| 3 | RandomBeaconHistory: store DRB seed alongside VRF | Planned |
-| 4 | DRB operator node client | Planned |
+### Key Takeaways from Other Protocols
+
+- **Aptos / Flow / DFINITY**: Use distributed validators for strong unpredictability, but sacrifice EVM compatibility or require custom VMs
+- **SKALE**: The only production EVM chain with native threshold randomness — validates that protocol-level randomness is viable
+- **Algorand**: Pioneered VRF-based cryptographic sortition for leader election; proves VRF scales to consensus-level usage
+- **RISE Chain**: Demonstrated that enshrined VRF in the sequencer delivers sub-millisecond latency, but acknowledged the weak unpredictability tradeoff
+
+Our approach combines the speed of enshrined VRF with the trust guarantees of a DRB commit-reveal layer, while maintaining full EVM compatibility on the OP Stack.
+
+## Security Model
+
+| Property | Enshrined VRF Only | Enshrined VRF + DRB | Threshold BLS (Future) |
+|----------|-------------------|---------------------|-------------------------|
+| Verifiable | Yes — VRF proof | Yes — VRF + Merkle | Yes — group public key |
+| Unbiasable | No — sequencer bias | Yes — 1-of-N honest | Yes — threshold guarantee |
+| Unpredictable | No — sequencer knows | Yes — commit-reveal | Yes — no one knows |
+| Revert-resistant | Yes — system call | Yes — system call | Yes — system call |
+| Forgery-proof | Yes — VRF deterministic | Yes — VRF + DRB hash | Yes — threshold signature |
 
 ## Repository Structure
 
-### This repo (tokasino)
+### This repo (enshrined-vrf)
 
-Prototyping and contracts. Contains:
 - `crates/node/` — reth-based prototype node (dev mode testing)
 - `crates/consensus/` — VRF consensus layer prototype (BLS12-381)
-- `crates/contracts/` — Solidity contracts (RandomBeaconHistory, DRBCommitReveal, CasinoExample, etc.)
+- `crates/contracts/` — Solidity contracts (RandomBeaconHistory, DRBCommitReveal, etc.)
+- `webapp/` — Demo dApps (randomness explorer, RPS game, liquidity pool)
 - `scripts/` — Integration test scripts
+- `docs/` — Design documents
 
-### op-reth fork (tokasino-op-reth)
+### op-reth fork (enshrined-vrf-op-reth)
 
 Production execution client. Fork of [op-rs/op-reth](https://github.com/op-rs/op-reth) with:
 - Custom `OpEvmFactory` wrapper adding randomness precompile at 0x0b
@@ -229,26 +287,6 @@ Production execution client. Fork of [op-rs/op-reth](https://github.com/op-rs/op
 - [`blst`](https://github.com/supranational/blst) — BLS12-381 VRF (NCC audited)
 - [`rand_chacha`](https://crates.io/crates/rand_chacha) — Per-tx CSPRNG
 - Future: [`blsful`](https://lib.rs/crates/blsful) + [`gennaro-dkg`](https://crates.io/crates/gennaro-dkg) for Threshold BLS
-
-## Security Model
-
-| Property | Phase 1 (VRF only) | Phase 1 (VRF + DRB) | Phase 2 (Threshold BLS) |
-|----------|-------------------|---------------------|-------------------------|
-| Verifiable | Yes — VRF proof | Yes — VRF + Merkle | Yes — group public key |
-| Unbiasable | No — sequencer bias | Yes — 1-of-N honest | Yes — threshold guarantee |
-| Unpredictable | No — sequencer knows | Yes — commit-reveal | Yes — no one knows |
-| Revert-resistant | Yes — system call | Yes — system call | Yes — system call |
-| Forgery-proof | Yes — VRF deterministic | Yes — VRF + DRB hash | Yes — threshold signature |
-
-## Prior Art
-
-| Project | Mechanism | EVM | Lesson |
-|---------|-----------|-----|--------|
-| [SKALE](https://skale.space/) | Threshold BLS precompile | Yes | Only production EVM chain with native threshold randomness |
-| [Oasis Sapphire](https://oasisprotocol.org/) | VRF + TEE precompile | Yes | EVM precompile interface design |
-| [Flow](https://flow.com/) | Threshold BLS beacon | Partial | Commit-reveal system contract pattern |
-| [Sui](https://sui.io/) | Threshold DKG/BLS | No | Consensus-parallel randomness |
-| [Aptos](https://aptos.dev/) | Weighted VRF/wVUF | No | Instant randomness API |
 
 ## License
 

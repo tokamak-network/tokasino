@@ -1,11 +1,11 @@
 [package]
-name = "tokasino-consensus"
+name = "enshrined-vrf-consensus"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
 [[bin]]
-name = "tokasino-cl"
+name = "enshrined-vrf-cl"
 path = "src/main.rs"
 
 [dependencies]

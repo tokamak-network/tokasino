@@ -10645,7 +10645,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
-name = "tokasino-consensus"
+name = "enshrined-vrf-consensus"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
@@ -10666,7 +10666,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokasino-node"
+name = "enshrined-vrf-node"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",

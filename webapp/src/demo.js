@@ -1,4 +1,4 @@
-// Tokasino Demo — real-time VRF pipeline dashboard with computation detail
+// Enshrined VRF Demo — real-time VRF pipeline dashboard with computation detail
 
 import {
   getReadProvider, getReadContract,
@@ -90,7 +90,7 @@ function showVrfForBlock(block) {
   // Step 2: BLS Sign
   activateVrfStep(1, 400)
   setTimeout(() => {
-    $('vrfSig').textContent = 'BLS_sign(sk, input, "TOKASINO-VRF-V1") = [96 bytes]'
+    $('vrfSig').textContent = 'BLS_sign(sk, input, "ENSHRINED-VRF-V1") = [96 bytes]'
   }, 400)
 
   // Step 3: VRF Output = prevrandao
@@ -197,7 +197,7 @@ function animateNewBlock(block) {
   setTimeout(() => {
     activatePipe(1)
     setPV('pipe1Val', 'BLS signing...')
-    $('pipeDetail').innerHTML = `BLS12-381 sign with DST <span class="gold">"TOKASINO-VRF-V1"</span>`
+    $('pipeDetail').innerHTML = `BLS12-381 sign with DST <span class="gold">"ENSHRINED-VRF-V1"</span>`
   }, 500)
 
   // Stage 2: keccak256
@@ -323,7 +323,7 @@ $('rollBtn').addEventListener('click', async () => {
       setPV('pipe1Val', 'BLS signed')
       setPV('pipe2Val', sh(prevrandao, 4))
       activateVrfStep(1)
-      $('vrfSig').textContent = 'BLS_sign(sk, input, "TOKASINO-VRF-V1")'
+      $('vrfSig').textContent = 'BLS_sign(sk, input, "ENSHRINED-VRF-V1")'
       addTL(trace, 'BLS Sign', 'signature = 96-byte proof', 'gold')
     }, 300)
 

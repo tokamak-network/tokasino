@@ -1,9 +1,9 @@
-// Tokasino dApp Configuration
+// Enshrined VRF dApp Configuration
 // Contract addresses are set after deployment via deploy-contracts.sh
 
 export const CHAIN_ID = 7777
 export const RPC_URL = 'http://localhost:8545'
-export const CHAIN_NAME = 'Tokasino L2'
+export const CHAIN_NAME = 'Enshrined VRF L2'
 
 // Contract addresses (updated by deploy script)
 export const contracts = {
@@ -11,6 +11,7 @@ export const contracts = {
   coinFlip: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
   roulette: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
   lottery: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
+  rps: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
 }
 
 // Minimal ABIs for each contract
@@ -38,6 +39,14 @@ export const abis = {
     'function houseBalance() external view returns (uint256)',
     'function isRed(uint8 number) external pure returns (bool)',
     'event SpinResult(uint256 indexed spinId, address indexed player, uint8 betType, uint8 betValue, uint8 result, uint256 betAmount, uint256 payout, bool won, bytes32 randomSeed)',
+  ],
+  rps: [
+    'function play(uint8 hand) external payable returns (uint256 gameId, uint8 houseHand, uint8 outcome, uint8 multiplier, uint256 payout)',
+    'function fundHouse() external payable',
+    'function totalGames() external view returns (uint256)',
+    'function houseBalance() external view returns (uint256)',
+    'function totalGamesPlayed() external view returns (uint256)',
+    'event GamePlayed(uint256 indexed gameId, address indexed player, uint8 playerHand, uint8 houseHand, uint8 outcome, uint8 multiplier, uint256 betAmount, uint256 payout, bytes32 randomSeed)',
   ],
   lottery: [
     'function buyTicket(uint256 number) external payable',
